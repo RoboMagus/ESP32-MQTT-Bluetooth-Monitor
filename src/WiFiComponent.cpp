@@ -129,11 +129,14 @@ void WiFiComponent::setupConfigPortal() {
     apName.toUpperCase();
     apName = "ESP32_bt_" + apName;
 
+    // Setup httpd authentication for config portal once it's connected to users home WiFi network:
+    wm.setHttpdAuthCredentials(HTTPD_USER, HTTPD_PASSWD);
+
     //fetches ssid and pass and tries to connect
     //if it does not connect it starts an access point with the specified name
     //and goes into a blocking loop awaiting configuration
     // --> last parameter ensures a retry to the blocking loop to connect to known WiFi AP
-    if(!wm.autoConnect(apName.c_str(),"abc45678", true)) {
+    if(!wm.autoConnect(apName.c_str(), AP_PASSWD, true)) {
         telnetSerial.println("failed to connect and hit timeout");
     }
     else {

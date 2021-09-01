@@ -16,6 +16,19 @@
 #include <WiFi.h>
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 
+// Configuration access point password:
+#ifndef AP_PASSWD
+#define AP_PASSWD "abc45678"
+#endif
+
+// Config portal httpd auth:
+#ifndef HTTPD_USER
+#define HTTPD_USER "admin"
+#endif
+#ifndef HTTPD_PASSWD
+#define HTTPD_PASSWD "1234"
+#endif
+
 class WiFiComponent {
 public:
     typedef std::function<void(void)> customHtmlHandler_t;
