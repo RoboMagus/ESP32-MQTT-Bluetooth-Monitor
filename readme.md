@@ -15,10 +15,23 @@ In order to build this project, you need to have __Visual Studio Code__ installe
 6. Once the build succeeds you can flash your ESP32 with the '_Monitor_' compatible Bluetooth scanner.
 
 ## Configuration
-_Proper configuration guide will be added later_
-But a quick summary for now:
-After you flash the ESP32 it'll create a HotSpot called 'ESP32_bt_[...]'. Connect to it using credentials __abc45678__ and configure your MQTT broker Monitor configuration, optionally the BT devices to be monitored, and as the __last step__ your WiFi credentials.
-Note: When initial configuration is completed and the ESP32 is connected to your home WiFi, it is still possible to enter the configuration menu of the device by pointing a browser at the devices IP address. However, to avoid unauthorized tinkering with your precious device, any access to it after configuration is password protected using username __admin__ and password __1234__ 
+After flasing your ESP32 some initial configuration is required. To begin, connect your phone to the ESP32's WiFi hotspot. This will have a name starting with ```ESP32_bt```, followed by unique characters based on the devices MAC address. The default firmware configuration requires the following credentials in order to connect to the AP: ```abc45678```. When connected navigate with your browser of choice to ```192.168.4.1``` to open the configuration menu.
+![main menu](/doc/screenshots/main_menu.jpg)
+
+Now it's best to first enter the __settings__ menu to start configuration there. Performing the WiFi configuration first will cause the device to restart and connect to your home network. You can still configure the device after this, it just requires some more steps to navigate to it's new IP again!
+The settings menu contains all settings related to the BT monitor application as shown below. The scan settings and BT devices can be skipped and configured later on. The important bits for now are the MQTT parameters to make sure the application can communicate.
+![main menu](/doc/screenshots/parameter_page.jpg)
+
+In case you need to revisit the configuration pages you can do so by navigating to the ESP32's IP address on your home network. To prevent others from tinkering with your device any access to it's webpage once it's connected to your WiFi network is password protected! To log on, use username ```admin``` and password ```1234```.
+
+## Usage
+### web control
+The ESP32 bluetooth scan status can be seen through the devices webpage by following the __BT Monitor__ link in the main menu. This page will show you all configured devices by name and MAC address, as well as their away / present state. From this page you can also trigger various scans and update the page to load the new scan results.
+![main menu](/doc/screenshots/bt_monitor_page.png)
+
+### Home assistant
+__todo__
+
 ## Features
 ### Implemented:
 will be added later...
