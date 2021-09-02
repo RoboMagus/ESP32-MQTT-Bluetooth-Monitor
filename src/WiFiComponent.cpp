@@ -104,10 +104,21 @@ void WiFiComponent::setupConfigPortal() {
     // Show update button on info page
     wm.setShowInfoUpdate(true); 
 
-    // Separate ParamsPage
+    // Separate ParamsPage from WiFi page
     wm.setParamsPage(true);
-    std::vector<const char *> menu = {"wifi","param","info","sep","erase","update","restart"};
-    wm.setMenu(menu); // custom menu, pass vector
+        
+    // Clear the original menu list
+    wm.setMenu(nullptr, 0);
+    // Use custom menu list only:
+    wm.setCustomMenuItems({{"/wifi"   , "Configure WiFi", false},
+                           {"/param"  , "Settings"      , false},
+                           {"/info"   , "Info"          , false},
+                           {"/bt"     , "BT Monitor"    , false},
+                           {"--"      , ""              , false}, // Separator
+                           {"/erase"  , "Erase"         , true },
+                           {"/update" , "Update"        , false},
+                           {"/restart", "Restart"       , false},
+                           {"--"      , ""              , false}}); // Ending Separator
 
 
     //sets timeout until configuration portal gets turned off
