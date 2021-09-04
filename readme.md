@@ -14,6 +14,24 @@ In order to build this project, you need to have __Visual Studio Code__ installe
 	Note: The first time opening this project, PlatformIO will take some time to fetch all the required modules before the list under _PROJECT TASKS_ shows up!!
 6. Once the build succeeds you can flash your ESP32 with the '_Monitor_' compatible Bluetooth scanner.
 
+__Modifications:__
+When building the project from sources, there are some things you may want to customize in ```platformio.ini```.
+- ```AP_PASSWD```: The AccessPoint password for when the ESP32 is not yet configured to connect to your home WiFi network.
+- ```HTTPD_USER```: Username for authorization on the config portal when the ESP32 is connected to your home WiFi network.
+- ```HTTPD_PASSWD```: Password for authorization on the config portal when the ESP32 is connected to your home WiFi network.
+- ```MAX_NUM_STORED_BLUETOOTH_DEVICES```: Maximum number of _known bluetooth devices_ that can be stored on the ESP32
+
+By default PlatformIO is set up for flashing devices that are connected to your computer. If you wish to perform remote debugging or over the air updates using ```espota``` you'll need to uncomment the following section and fill in your device-ip:
+```
+monitor_port = socket://[device-ip]:23
+upload_protocol = espota
+upload_port = [device-ip]
+upload_flags =
+  --port=3232
+  --auth=admin
+```
+
+
 ## Configuration
 After flasing your ESP32 some initial configuration is required. To begin, connect your phone to the ESP32's WiFi hotspot. This will have a name starting with ```ESP32_bt```, followed by unique characters based on the devices MAC address. The default firmware configuration requires the following credentials in order to connect to the AP: ```abc45678```. When connected navigate with your browser of choice to ```192.168.4.1``` to open the configuration menu.
 ![main menu](/doc/screenshots/main_menu.jpg)
@@ -34,8 +52,27 @@ Find some examples for sensors and automations in HomeAssistant [here](doc/HomeA
 
 ## Features
 ### Implemented:
-will be added later...
-
+- [andrewjfreyer/monitor](https://github.com/andrewjfreyer/monitor) compatible MQTT scan reporting		
+- Arrival / Departure scan triggered by ```monitor/scan/arrive``` and ```monitor/scan/depart```
+  - 'Any' scan (scan for departure on present devices and arrival for away devices) triggered by ```monitor/scan/any```
+- Periodic scanning
+- Setup known bluetooth devices through MQTT using ```monitor/setup/add known device``` and ```monitor/setup/delete known device```
+  - Send only MAC when deleting a device
+  - Send MAC followed by its alias when adding devices
+- Over the air update
+  - through web interface
+  - Using ```espota```
+- Setup through [modified](https://github.com/RoboMagus/WiFiManager) [WiFiManager](https://github.com/tzapu/WiFiManager)
+  - Password protected web interface once connected to your home WiFi network
+  - Bluetooth Scan status + scan controls webpage
+- Logging over serial and telnet
+- Monitor settings:
+  - #Arrival scans
+  - #Departure scans
+  - seconds between scans within set
+  - minimal time between scan sets
+  - periodic scanning interval
+  
 ### ToDo
 - [ ] Add passive scanning as is available in [monitor](https://github.com/andrewjfreyer/monitor)
 - [ ] Expand configuration options
