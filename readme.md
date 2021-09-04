@@ -30,7 +30,7 @@ The ESP32 bluetooth scan status can be seen through the devices webpage by follo
 ![main menu](/doc/screenshots/bt_monitor_page.png)
 
 ### Home assistant
-__todo__
+Find some examples for sensors and automations in HomeAssistant [here](doc/HomeAssistantSnippets.md).
 
 ## Features
 ### Implemented:
