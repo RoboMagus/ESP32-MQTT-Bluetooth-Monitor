@@ -42,6 +42,7 @@
 // monitor/setup/delete known device
 
 char *bda2str(const esp_bd_addr_t bda, char *str, size_t size);
+bool  str2bda(const char* str, esp_bd_addr_t& mac);
 
 enum class ScanType{
     None,

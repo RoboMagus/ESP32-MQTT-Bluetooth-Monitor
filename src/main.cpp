@@ -35,14 +35,23 @@
 #include "esp_task_wdt.h"
 
 // Custom components:
+#include "NestedStruct.h"
 #include "TelnetSerial.h"
 #include "WiFiComponent.h"
 #include "BluetoothScanner.h"
 #include "parameter.h"
+#include "BluetoothParameter.h"
 #include "led.h"
 #include "mqtt.h"
 
 #include "stackDbgHelper.h"
+
+#ifndef MAX_NUM_STORED_BLUETOOTH_DEVICES
+#define MAX_NUM_STORED_BLUETOOTH_DEVICES (8)
+#endif
+// Upper limit for max number of stored bluetooth devices. 
+// Is rediculously large, but more would not fit in NVS!!
+static_assert(MAX_NUM_STORED_BLUETOOTH_DEVICES <= 40, "Cannot fit more than 40 bluetooth device identifiers in ESP32 storage!!");
 
 #define WDT_TIMEOUT 8
 
@@ -57,8 +66,8 @@ WiFiManager wm(telnetSerial);
 LED led;
 
 // >>> All parameters in order shown in WiFiManager:
-Parameter time_header  ("<h3>Timezone</h3><br>(empty for auto-geolocation)");
-Parameter time_zone    ("time_zone",   "mqtt server", "",         40);
+Parameter time_header  ("<h3>Timezone</h3><br>Use e.g. Europe/Amsterdam. <a href='http://wikipedia.org/wiki/List_of_tz_database_time_zones#list'>List of timezones</a><br>(empty for auto-geolocation)<br>");
+Parameter time_zone    ("time_zone",     "",            "",         40);
 // MQTT
 Parameter mqtt_header  ("<h3>MQTT parameters</h3>");
 Parameter mqtt_server  ("mqtt_server",   "mqtt server", "",         40);
@@ -78,36 +87,9 @@ Parameter bluetooth_monitor_beacon_expiration          (PSTR("bm_beacon_exp"), P
 Parameter bluetooth_monitor_min_time_between_scans     (PSTR("bm_min_time"),   PSTR("Min. time between scans (s)"),   "10",    6);
 Parameter bluetooth_monitor_periodic_scan_interval     (PSTR("bm_period"),     PSTR("Periodic scan interval (s)"),    "",      6);
 
-
-static const char MAC_ADDR[] PROGMEM = "MAC address";
-static const char ALIAS   [] PROGMEM = "Alias";
-
-// Known Static Bluetooth MAC addresses
-Parameter bluetooth_monitor_MAC_header          (PSTR("<h3>Bluetooth Monitor Devices</h3>"));
-Parameter bluetooth_monitor_MAC1                (PSTR("bm_mac1"),    MAC_ADDR,    "",   20);
-Parameter bluetooth_monitor_MAC1_alias          (PSTR("bm_mac1a"),   ALIAS   ,    "",   20);
-Parameter bluetooth_monitor_MAC1_sep            (PSTR("<hr width=\"80%\" align=\"center\" noshade>"));
-Parameter bluetooth_monitor_MAC2                (PSTR("bm_mac2"),    MAC_ADDR,    "",   20);
-Parameter bluetooth_monitor_MAC2_alias          (PSTR("bm_mac2a"),   ALIAS   ,    "",   20);
-Parameter bluetooth_monitor_MAC2_sep            (PSTR("<hr width=\"80%\" align=\"center\" noshade>"));
-Parameter bluetooth_monitor_MAC3                (PSTR("bm_mac3"),    MAC_ADDR,    "",   20);
-Parameter bluetooth_monitor_MAC3_alias          (PSTR("bm_mac3a"),   ALIAS   ,    "",   20);
-Parameter bluetooth_monitor_MAC3_sep            (PSTR("<hr width=\"80%\" align=\"center\" noshade>"));
-Parameter bluetooth_monitor_MAC4                (PSTR("bm_mac4"),    MAC_ADDR,    "",   20);
-Parameter bluetooth_monitor_MAC4_alias          (PSTR("bm_mac4a"),   ALIAS   ,    "",   20);
-Parameter bluetooth_monitor_MAC4_sep            (PSTR("<hr width=\"80%\" align=\"center\" noshade>"));
-Parameter bluetooth_monitor_MAC5                (PSTR("bm_mac5"),    MAC_ADDR,    "",   20);
-Parameter bluetooth_monitor_MAC5_alias          (PSTR("bm_mac5a"),   ALIAS   ,    "",   20);
-Parameter bluetooth_monitor_MAC5_sep            (PSTR("<hr width=\"80%\" align=\"center\" noshade>"));
-Parameter bluetooth_monitor_MAC6                (PSTR("bm_mac6"),    MAC_ADDR,    "",   20);
-Parameter bluetooth_monitor_MAC6_alias          (PSTR("bm_mac6a"),   ALIAS   ,    "",   20);
-Parameter bluetooth_monitor_MAC6_sep            (PSTR("<hr width=\"80%\" align=\"center\" noshade>"));
-Parameter bluetooth_monitor_MAC7                (PSTR("bm_mac7"),    MAC_ADDR,    "",   20);
-Parameter bluetooth_monitor_MAC7_alias          (PSTR("bm_mac7a"),   ALIAS   ,    "",   20);
-Parameter bluetooth_monitor_MAC7_sep            (PSTR("<hr width=\"80%\" align=\"center\" noshade>"));
-Parameter bluetooth_monitor_MAC8                (PSTR("bm_mac8"),    MAC_ADDR,    "",   20);
-Parameter bluetooth_monitor_MAC8_alias          (PSTR("bm_mac8a"),   ALIAS   ,    "",   20);
-Parameter bluetooth_monitor_MAC8_sep            (PSTR("<hr width=\"80%\" align=\"center\" noshade>"));
+// Known Static Bluetooth MAC 
+// Nested struct helper to generate objects and reduce boilerplate...
+NestWrapper<BluetoothParameter, MAX_NUM_STORED_BLUETOOTH_DEVICES> bluetooth_monitor_parameter_sets;
 
 // <<<
 WiFiComponent wifi;
@@ -309,9 +291,6 @@ void setup() {
     led.setup();
     led.set(ON);
      
-    // Early init to avoid malloc failure for big chunks!
-    //btScanner.init();
-
     WiFi.setAutoConnect(true);
 
     // Begin Serial separate!
@@ -384,12 +363,24 @@ void setup() {
     mqtt.setup();
     setupMqttCallbacks();
 
+    // Setup bluetooth AFTER WiFi such that the persistent parameters are loaded!
+    btScanner.init();
+    btScanner.setup();
+    for(int i = 0; i < bluetooth_monitor_parameter_sets.size; i++) {
+        esp_bd_addr_t mac;
+        // If valid mac address, add it!
+        const char* mac_str = bluetooth_monitor_parameter_sets.data[i].getMacAddress();
+        telnetSerial.printf("Validating MAC: %s \n", mac_str);
+        if(str2bda(mac_str, mac)) {
+            const char* alias = bluetooth_monitor_parameter_sets.data[i].getAlias();
+            telnetSerial.printf("  Adding device: %s, with MAC: %s \n", alias, mac_str);
+            btScanner.addKnownDevice(mac, alias);
+        }
+    }
+
     // Setup EZtime
 	setDebug(INFO);	
 	waitForSync();
-
-    btScanner.init();
-    btScanner.setup();
 
     // Stop bluetooth on OTA to reduce chance of failures..
     wifi.registerOtaStartCallback([](){
