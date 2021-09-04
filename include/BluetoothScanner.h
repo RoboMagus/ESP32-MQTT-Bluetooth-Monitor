@@ -82,8 +82,6 @@ public:
 
 private:
     void loadSettings();
-    void loadKnownBluetoothDevices();
-    void printKnownBluetoothPairs();
     void removeFromBtDevices(const esp_bd_addr_t mac);
 
     uint8_t getNumScans(ScanType scanType);

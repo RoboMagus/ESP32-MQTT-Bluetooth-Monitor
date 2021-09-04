@@ -266,10 +266,53 @@ void setupMqttCallbacks() {
     });
     // MQTT setup interfaces:
     mqtt.add_callback((baseTopic + "/setup/ADD STATIC DEVICE").c_str(), [](const byte* payload, unsigned int length) {
-        btScanner.addKnownDevice(std::string((const char*)payload, length));
+        // Splitting the MAC from the alias:
+        std::string _in = std::string((const char*)payload, length);
+        _in.erase(_in.find_last_not_of(" \t\n\v") + 1);
+        std::string mac = _in.substr(0, _in.find(" "));
+        std::string alias = _in.substr(_in.find(" "));
+
+        size_t first = alias.find_first_not_of(" \t\n\v");
+        size_t last = alias.find_last_not_of(" \t\n\v");
+        if(first != std::string::npos) {
+            alias = alias.substr(first, (last-first+1));
+        }
+
+        // Add to storage and BluetoothScanner
+        esp_bd_addr_t addr;
+        if(str2bda(mac.c_str(), addr)) {
+            char bda_str[18];
+            if (bda2str(addr, bda_str, 18)) {
+                bool device_saved = false;
+                for(int i = 0; i < bluetooth_monitor_parameter_sets.size; i++) {
+                    if(strlen(bluetooth_monitor_parameter_sets.data[i].getMacAddress()) == 0 || strcmp(bluetooth_monitor_parameter_sets.data[i].getMacAddress(), bda_str) == 0) {
+                        bluetooth_monitor_parameter_sets.data[i].setMacAddress(bda_str);
+                        bluetooth_monitor_parameter_sets.data[i].setAlias(alias.c_str());
+                        device_saved = true;
+                        break;
+                    }
+                }
+                if (device_saved){
+                    btScanner.addKnownDevice(addr, alias.c_str());
+                }
+            }
+        }
+
     });
     mqtt.add_callback((baseTopic + "/setup/DELETE STATIC DEVICE").c_str(), [](const byte* payload, unsigned int length) {
-        btScanner.deleteKnownDevice(std::string((const char*)payload, length));
+        esp_bd_addr_t addr;
+        if(str2bda(std::string((const char*)payload, length).c_str(), addr)) {
+            char bda_str[18];
+            if (bda2str(addr, bda_str, 18)) {
+                btScanner.deleteKnownDevice(addr);
+                for(int i = 0; i < bluetooth_monitor_parameter_sets.size; i++) {
+                    if(strcmp(bluetooth_monitor_parameter_sets.data[i].getMacAddress(), bda_str) == 0) {
+                        bluetooth_monitor_parameter_sets.data[i].setMacAddress("");
+                        bluetooth_monitor_parameter_sets.data[i].setAlias("");
+                    }
+                }
+            }
+        }
     });
 }
 

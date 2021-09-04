@@ -51,41 +51,7 @@ extern Parameter bluetooth_monitor_beacon_expiration;
 extern Parameter bluetooth_monitor_min_time_between_scans;
 extern Parameter bluetooth_monitor_periodic_scan_interval;
 
-#define REMOVE_PARAM_PAIRS
-#ifndef REMOVE_PARAM_PAIRS
-extern Parameter bluetooth_monitor_MAC1;
-extern Parameter bluetooth_monitor_MAC1_alias;
-extern Parameter bluetooth_monitor_MAC2;
-extern Parameter bluetooth_monitor_MAC2_alias;
-extern Parameter bluetooth_monitor_MAC3;
-extern Parameter bluetooth_monitor_MAC3_alias;
-extern Parameter bluetooth_monitor_MAC4;
-extern Parameter bluetooth_monitor_MAC4_alias;
-extern Parameter bluetooth_monitor_MAC5;
-extern Parameter bluetooth_monitor_MAC5_alias;
-extern Parameter bluetooth_monitor_MAC6;
-extern Parameter bluetooth_monitor_MAC6_alias;
-extern Parameter bluetooth_monitor_MAC7;
-extern Parameter bluetooth_monitor_MAC7_alias;
-extern Parameter bluetooth_monitor_MAC8;
-extern Parameter bluetooth_monitor_MAC8_alias;
-#endif
 extern Timezone mTime;
-
-
-#ifndef REMOVE_PARAM_PAIRS
-std::vector<std::pair<Parameter&, Parameter&>> paramPairs = {
-    {bluetooth_monitor_MAC1, bluetooth_monitor_MAC1_alias},
-    {bluetooth_monitor_MAC2, bluetooth_monitor_MAC2_alias},
-    {bluetooth_monitor_MAC3, bluetooth_monitor_MAC3_alias},
-    {bluetooth_monitor_MAC4, bluetooth_monitor_MAC4_alias},
-    {bluetooth_monitor_MAC5, bluetooth_monitor_MAC5_alias},
-    {bluetooth_monitor_MAC6, bluetooth_monitor_MAC6_alias},
-    {bluetooth_monitor_MAC7, bluetooth_monitor_MAC7_alias},
-    {bluetooth_monitor_MAC8, bluetooth_monitor_MAC8_alias}
-};
-#endif
-
 
 #define ENDIAN_CHANGE_U16(x) ((((x)&0xFF00) >> 8) + (((x)&0xFF) << 8))
 
@@ -343,36 +309,6 @@ void BluetoothScanner::loadSettings() {
 }
 
 // -----------------------------------------------
-void BluetoothScanner::loadKnownBluetoothDevices() {
-#ifndef REMOVE_PARAM_PAIRS
-    std::lock_guard<std::mutex> lock(btDevicesMutex);
-    for(auto pair : paramPairs) {
-        esp_bd_addr_t mac;
-        if(str2bda(pair.first.getValue(), mac)) {
-            btDevices.emplace_back(mac, String(pair.second.getValue()));
-            telnetSerial.printf("Added BT device with MAC: %s, Alias: %s\n", mac, pair.second.getValue());
-        }
-        else {
-            telnetSerial.printf("Not added MAC: %s, Alias: %s\n", mac, pair.second.getValue());
-        }
-    }
-#endif
-}
-
-// -----------------------------------------------
-void BluetoothScanner::printKnownBluetoothPairs() {
-    loadKnownBluetoothDevices();
-
-    std::lock_guard<std::mutex> lock(btDevicesMutex);
-    char bda_str[18];
-    for(auto& dev : btDevices) {
-        bda2str(dev.mac, bda_str, 18);
-        telnetSerial.printf("MAC: %s, Alias: %s\n", bda_str, dev.name.c_str());
-    }
-} 
-
-
-// -----------------------------------------------
 void BluetoothScanner::update_device_info(esp_bt_gap_cb_param_t *param)
 {
     char bda_str[18];
@@ -566,7 +502,6 @@ void BluetoothScanner::setup()
 
     loadSettings();
 
-    loadKnownBluetoothDevices();    
 }
 
 // -----------------------------------------------
@@ -779,30 +714,12 @@ void BluetoothScanner::addKnownDevice(const std::string& input) {
 // -----------------------------------------------
 void BluetoothScanner::addKnownDevice(const esp_bd_addr_t mac, const char* alias) {
     char bda_str[18];
-    telnetSerial.printf("Try Adding device: %s\n", alias);
     if (bda2str(mac, bda_str, 18)) {
-#ifndef REMOVE_PARAM_PAIRS
-        // Find available spot in parameter set:
-        bool device_saved = false;
-        for(auto& pp : paramPairs) {
-            if(strlen(pp.first.getValue()) == 0 || strcmp(pp.first.getValue(), bda_str) == 0) {
-                pp.first.setValue(bda_str);
-                pp.second.setValue(alias);
-                device_saved = true;
-                break;
-            }
-        }
-#else
-        bool device_saved = true;
-#endif
-        if(device_saved) {
-            telnetSerial.printf("  Adding device: %s, with MAC: %s \n", alias, bda_str);
-            // Add to the set of currently known devices:
-            std::lock_guard<std::mutex> lock(btDevicesMutex);
-            // Remove entry if it already existed in order to overwrite with updated one:
-            removeFromBtDevices(mac);
-            btDevices.emplace_back(mac, String(alias));
-        }
+        // Add to the set of currently known devices:
+        std::lock_guard<std::mutex> lock(btDevicesMutex);
+        // Remove entry if it already existed in order to overwrite with updated one:
+        removeFromBtDevices(mac);
+        btDevices.emplace_back(mac, String(alias));
     }
 }
 
@@ -828,20 +745,8 @@ void BluetoothScanner::removeFromBtDevices(const esp_bd_addr_t mac) {
 
 // -----------------------------------------------
 void BluetoothScanner::deleteKnownDevice(const esp_bd_addr_t mac) {
-#ifndef REMOVE_PARAM_PAIRS
-    char bda_str[18];
-    if (bda2str(mac, bda_str, 18)) {
-        for(auto& pp : paramPairs) {
-            // Clear from persistent storage
-            if(strcmp(pp.first.getValue(), bda_str) == 0) {
-                pp.first.setValue("");
-                pp.second.setValue("");
-            }
-        }
-        std::lock_guard<std::mutex> lock(btDevicesMutex);
-        removeFromBtDevices(mac);
-    }
-#endif
+    std::lock_guard<std::mutex> lock(btDevicesMutex);
+    removeFromBtDevices(mac);
 }
 
 // -----------------------------------------------

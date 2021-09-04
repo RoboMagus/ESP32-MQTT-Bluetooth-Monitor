@@ -26,8 +26,16 @@ public:
     return bm_mac_addr.getValue();
   }
 
+  void setMacAddress(const char * val) {
+    bm_mac_addr.setValue(val);
+  }
+
   const char *getAlias() {
     return bm_mac_alias.getValue();
+  }
+
+  void setAlias(const char * val) {
+    bm_mac_alias.setValue(val);
   }
 
 private:
