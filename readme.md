@@ -1,9 +1,22 @@
+
 # ESP32 BT Monitor
+![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/RoboMagus/ESP32-MQTT-Bluetooth-Monitor?include_prereleases&style=for-the-badge) ![ESP-IDF](https://img.shields.io/badge/ESP--IDF-v4.2.0-red?longCache=true&style=for-the-badge)
+![ESP32](https://img.shields.io/badge/ESP-32-blue?longCache=true&style=for-the-badge)
+
+__What is it?__
+
+This is a (at the moment __partial__) port of [andrewjfreyer/monitor](https://github.com/andrewjfreyer/monitor) for the popular and super cheap ESP32 boards. For a more detailed explanation of how it works, visit the link above. But as a short summary: this software allows you to scan for known Bluetooth devices by MAC address on demand, by requesting their name. The beauty of it is that you don't need any special software running on the devices you'd like to track!
 
 
 ## Building the project from source
 ### Prerequisites
 In order to build this project, you need to have __Visual Studio Code__ installed, with the __C/C++__ and __PlatformIO IDE__ extensions.
+
+### Libraries
+This project relies on the following libraries:
+- [ropg/ezTime](https://github.com/ropg/ezTime)
+- [knolleary/PubSubClient](https://github.com/knolleary/PubSubClient#v2.8)
+- [RoboMagus/WiFiManager](https://github.com/RoboMagus/WiFiManager) (Modified from [tzapu/WiFiManager](https://github.com/tzapu/WiFiManager))
 
 ### Build it
 1. Clone this repository
@@ -34,18 +47,18 @@ upload_flags =
 
 ## Configuration
 After flasing your ESP32 some initial configuration is required. To begin, connect your phone to the ESP32's WiFi hotspot. This will have a name starting with ```ESP32_bt```, followed by unique characters based on the devices MAC address. The default firmware configuration requires the following credentials in order to connect to the AP: ```abc45678```. When connected navigate with your browser of choice to ```192.168.4.1``` to open the configuration menu.
-![main menu](/doc/screenshots/main_menu.jpg)
+<img src="/doc/screenshots/main_menu.jpg" width=480px>
 
 Now it's best to first enter the __settings__ menu to start configuration there. Performing the WiFi configuration first will cause the device to restart and connect to your home network. You can still configure the device after this, it just requires some more steps to navigate to it's new IP again!
 The settings menu contains all settings related to the BT monitor application as shown below. The scan settings and BT devices can be skipped and configured later on. The important bits for now are the MQTT parameters to make sure the application can communicate.
-![main menu](/doc/screenshots/parameter_page.jpg)
+<img src="/doc/screenshots/parameter_page.jpg" width=480px>
 
 In case you need to revisit the configuration pages you can do so by navigating to the ESP32's IP address on your home network. To prevent others from tinkering with your device any access to it's webpage once it's connected to your WiFi network is password protected! To log on, use username ```admin``` and password ```1234```.
 
 ## Usage
 ### web control
 The ESP32 bluetooth scan status can be seen through the devices webpage by following the __BT Monitor__ link in the main menu. This page will show you all configured devices by name and MAC address, as well as their away / present state. From this page you can also trigger various scans and update the page to load the new scan results.
-![main menu](/doc/screenshots/bt_monitor_page.png)
+<img src="/doc/screenshots/bt_monitor_page.png" width=480px>
 
 ### Home assistant
 Find some examples for sensors and automations in HomeAssistant [here](doc/HomeAssistantSnippets.md).
