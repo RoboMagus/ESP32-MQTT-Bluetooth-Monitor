@@ -18,6 +18,7 @@
 
 #include "parameter.h"
 
+#include "stackDbgHelper.h"
 #include "WiFiComponent.h"
 #include "led.h"
 
@@ -29,10 +30,10 @@ const int   daylightOffset_sec = 3600;
 
 // -----------------------------------------------
 void WiFiComponent::wifiInfo(){
-    WiFi.printDiag(telnetSerial);
-    telnetSerial.println("SAVED: " + (String)wm.getWiFiIsSaved() ? "YES" : "NO");
-    telnetSerial.println("SSID: " + (String)wm.getWiFiSSID());
-    telnetSerial.println("PASS: " + (String)wm.getWiFiPass());
+    WiFi.printDiag(mSerial);
+    mSerial.println("SAVED: " + (String)wm.getWiFiIsSaved() ? "YES" : "NO");
+    mSerial.println("SSID: " + (String)wm.getWiFiSSID());
+    mSerial.println("PASS: " + (String)wm.getWiFiPass());
 }
 
 // -----------------------------------------------
@@ -148,7 +149,7 @@ void WiFiComponent::setupConfigPortal() {
     //and goes into a blocking loop awaiting configuration
     // --> last parameter ensures a retry to the blocking loop to connect to known WiFi AP
     if(!wm.autoConnect(apName.c_str(), AP_PASSWD, true)) {
-        telnetSerial.println("failed to connect and hit timeout");
+        mSerial.println("failed to connect and hit timeout");
     }
     else {
         wm.setHttpdAuthEnable(true); 
@@ -158,7 +159,7 @@ void WiFiComponent::setupConfigPortal() {
         WiFi.mode(WIFI_STA);
 
         //if you get here you have connected to the WiFi
-        telnetSerial.println("connected...yeey :)");
+        mSerial.println("connected...yeey :)");
         wm.startWebPortal();
     }
 
@@ -183,7 +184,7 @@ void WiFiComponent::setupArduinoOTA() {
         type = "filesystem";
 
         // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-        telnetSerial.println("Start updating " + type);
+        mSerial.println("Start updating " + type);
 
         for (auto& cb : ota_callback_functions) {
             cb();
@@ -194,7 +195,7 @@ void WiFiComponent::setupArduinoOTA() {
         led.set(OFF);
     })
     .onEnd([this]() {
-        telnetSerial.println("\nEnd");
+        Serial.println("\nEnd");
         otaBusy = 0;
         led.set(ON);
         // Succesful end will reset ESP itself
@@ -207,12 +208,12 @@ void WiFiComponent::setupArduinoOTA() {
         feedLoopWDT();
     })
     .onError([this](ota_error_t error) {
-        telnetSerial.printf("Error[%u]: ", error);
-        if (error == OTA_AUTH_ERROR) telnetSerial.println("Auth Failed");
-        else if (error == OTA_BEGIN_ERROR) telnetSerial.println("Begin Failed");
-        else if (error == OTA_CONNECT_ERROR) telnetSerial.println("Connect Failed");
-        else if (error == OTA_RECEIVE_ERROR) telnetSerial.println("Receive Failed");
-        else if (error == OTA_END_ERROR) telnetSerial.println("End Failed");
+        mSerial.printf("Error[%u]: ", error);
+        if (error == OTA_AUTH_ERROR) mSerial.println("Auth Failed");
+        else if (error == OTA_BEGIN_ERROR) mSerial.println("Begin Failed");
+        else if (error == OTA_CONNECT_ERROR) mSerial.println("Connect Failed");
+        else if (error == OTA_RECEIVE_ERROR) mSerial.println("Receive Failed");
+        else if (error == OTA_END_ERROR) mSerial.println("End Failed");
         otaBusy = 0;
         led.set(16);
         

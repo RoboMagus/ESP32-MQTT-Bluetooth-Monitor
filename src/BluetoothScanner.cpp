@@ -32,12 +32,15 @@
 #include "mqtt.h"
 #include "led.h"
 
+#include "stackDbgHelper.h"
 #include "CallbackHelper.h"
 
 
 #define GAP_TAG          "GAP"
 #define SPP_TAG          "SPP"
 #define GATTC_TAG        "GATTC"
+
+#define BLE_SCAN_AFTER_READ_REMOTE_NAMES (0)
 
 #define GAP_CALLBACK_SIGNATURE void(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
 
@@ -176,17 +179,17 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
     SCOPED_STACK_ENTRY;
     if (bleAdvertisedDeviceResult.haveName())
     {
-    // telnetSerial.print("Device name: ");
-    // telnetSerial.println(advertisedDevice.getName().c_str());
-    // telnetSerial.println("");
+    // mSerial.print("Device name: ");
+    // mSerial.println(advertisedDevice.getName().c_str());
+    // mSerial.println("");
     }
 
     if (bleAdvertisedDeviceResult.haveServiceUUID())
     {
     // BLEUUID devUUID = advertisedDevice.getServiceUUID();
-    // telnetSerial.print("Found ServiceUUID: ");
-    // telnetSerial.println(devUUID.toString().c_str());
-    // telnetSerial.println("");
+    // mSerial.print("Found ServiceUUID: ");
+    // mSerial.println(devUUID.toString().c_str());
+    // mSerial.println("");
     }
     else
     {
@@ -199,25 +202,25 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
 
             if (strManufacturerData.length() == 25 && cManufacturerData[0] == 0x4C && cManufacturerData[1] == 0x00)
             {
-            telnetSerial.println("Found an iBeacon!");
+            mSerial.println("Found an iBeacon!");
             String rssi_s = "??";
             if(bleAdvertisedDeviceResult.haveRSSI()) {
                 rssi_s = bleAdvertisedDeviceResult.getRSSI();
             }
             BLEBeacon oBeacon = BLEBeacon();
             oBeacon.setData(strManufacturerData);
-            telnetSerial.printf("iBeacon Frame\n");
-            telnetSerial.printf("ID: %04X Major: %d Minor: %d UUID: %s Power: %d, RSSI: %s\n", oBeacon.getManufacturerId(), ENDIAN_CHANGE_U16(oBeacon.getMajor()), ENDIAN_CHANGE_U16(oBeacon.getMinor()), oBeacon.getProximityUUID().toString().c_str(), oBeacon.getSignalPower(), rssi_s.c_str());
+            mSerial.printf("iBeacon Frame\n");
+            mSerial.printf("ID: %04X Major: %d Minor: %d UUID: %s Power: %d, RSSI: %s\n", oBeacon.getManufacturerId(), ENDIAN_CHANGE_U16(oBeacon.getMajor()), ENDIAN_CHANGE_U16(oBeacon.getMinor()), oBeacon.getProximityUUID().toString().c_str(), oBeacon.getSignalPower(), rssi_s.c_str());
             }
             else
             { /*
-            telnetSerial.println("Found another manufacturers beacon!");
-            telnetSerial.printf("strManufacturerData: %d ", strManufacturerData.length());
+            mSerial.println("Found another manufacturers beacon!");
+            mSerial.printf("strManufacturerData: %d ", strManufacturerData.length());
             for (int i = 0; i < strManufacturerData.length(); i++)
             {
-                telnetSerial.printf("[%X]", cManufacturerData[i]);
+                mSerial.printf("[%X]", cManufacturerData[i]);
             }
-            telnetSerial.printf("\n");
+            mSerial.printf("\n");
             */
             }
         }
@@ -232,7 +235,7 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
     {
         if (payLoad[11] == 0x10)
         {
-            telnetSerial.println("Found an EddystoneURL beacon!");
+            mSerial.println("Found an EddystoneURL beacon!");
             BLEEddystoneURL foundEddyURL = BLEEddystoneURL();
             std::string eddyContent((char *)&payLoad[11]); // incomplete EddystoneURL struct!
 
@@ -241,23 +244,23 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
             if (bareURL[0] == 0x00)
             {
             size_t payLoadLen = bleAdvertisedDeviceResult.getPayloadLength();
-            telnetSerial.println("DATA-->");
+            mSerial.println("DATA-->");
             for (int idx = 0; idx < payLoadLen; idx++)
             {
-                telnetSerial.printf("0x%08X ", payLoad[idx]);
+                mSerial.printf("0x%08X ", payLoad[idx]);
             }
-            telnetSerial.println("\nInvalid Data");
+            mSerial.println("\nInvalid Data");
             return;
             }
 
-            telnetSerial.printf("Found URL: %s\n", foundEddyURL.getURL().c_str());
-            telnetSerial.printf("Decoded URL: %s\n", foundEddyURL.getDecodedURL().c_str());
-            telnetSerial.printf("TX power %d\n", foundEddyURL.getPower());
-            telnetSerial.println("\n");
+            mSerial.printf("Found URL: %s\n", foundEddyURL.getURL().c_str());
+            mSerial.printf("Decoded URL: %s\n", foundEddyURL.getDecodedURL().c_str());
+            mSerial.printf("TX power %d\n", foundEddyURL.getPower());
+            mSerial.println("\n");
         }
         else if (payLoad[11] == 0x20)
         {
-            telnetSerial.println("Found an EddystoneTLM beacon!");
+            mSerial.println("Found an EddystoneTLM beacon!");
             BLEEddystoneTLM foundEddyURL = BLEEddystoneTLM();
             std::string eddyContent((char *)&payLoad[11]); // incomplete EddystoneURL struct!
 
@@ -269,16 +272,16 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
             }
 
             foundEddyURL.setData(eddyContent);
-            telnetSerial.printf("Reported battery voltage: %dmV\n", foundEddyURL.getVolt());
-            telnetSerial.printf("Reported temperature from TLM class: %.2fC\n", (double)foundEddyURL.getTemp());
+            mSerial.printf("Reported battery voltage: %dmV\n", foundEddyURL.getVolt());
+            mSerial.printf("Reported temperature from TLM class: %.2fC\n", (double)foundEddyURL.getTemp());
             int temp = (int)payLoad[16] + (int)(payLoad[15] << 8);
             float calcTemp = temp / 256.0f;
-            telnetSerial.printf("Reported temperature from data: %.2fC\n", calcTemp);
-            telnetSerial.printf("Reported advertise count: %d\n", foundEddyURL.getCount());
-            telnetSerial.printf("Reported time since last reboot: %ds\n", foundEddyURL.getTime());
-            telnetSerial.println("\n");
-            telnetSerial.print(foundEddyURL.toString().c_str());
-            telnetSerial.println("\n");
+            mSerial.printf("Reported temperature from data: %.2fC\n", calcTemp);
+            mSerial.printf("Reported advertise count: %d\n", foundEddyURL.getCount());
+            mSerial.printf("Reported time since last reboot: %ds\n", foundEddyURL.getTime());
+            mSerial.println("\n");
+            mSerial.print(foundEddyURL.toString().c_str());
+            mSerial.println("\n");
         }
     }
 }
@@ -304,7 +307,7 @@ void BluetoothScanner::loadSettings() {
 
     scanner_identity = mqtt_identity.getValue();
 
-    telnetSerial.printf("BT Scanner settings:\n  num_arrival_scans: %d\n  num_departure_scans: %d\n  scan_iter_interval: %lu\n  beacon_expiration_seconds: %d\n  min_seconds_between_scans: %d\n  periodic_scan_interval: %d\n  scanner_identity: %s\n\n",
+    mSerial.printf("BT Scanner settings:\n  num_arrival_scans: %d\n  num_departure_scans: %d\n  scan_iter_interval: %lu\n  beacon_expiration_seconds: %d\n  min_seconds_between_scans: %d\n  periodic_scan_interval: %d\n  scanner_identity: %s\n\n",
         num_arrival_scans, num_departure_scans, scan_iter_interval, beacon_expiration_seconds, min_seconds_between_scans, periodic_scan_interval, scanner_identity);
 }
 
@@ -540,23 +543,25 @@ void BluetoothScanner::loop()
                 }
             }
             if (devices_checked >= btDevices.size()) { // All devices scanned. No more scanning
-                telnetSerial.println("Stopping All searches...\n\n");
+                mSerial.println("Stopping All searches...\n\n");
                 scanIndex = -1;
                 scanMode = ScanType::None;
                 
+#if BLE_SCAN_AFTER_READ_REMOTE_NAMES         
 #if 0
                 BLEScanResults foundDevices = pBLEScan->start(scanTime, false); // Blocks until result is given
-                telnetSerial.print("Devices found: ");
-                telnetSerial.println(foundDevices.getCount());
-                telnetSerial.println("Scan done!");
+                mSerial.print("Devices found: ");
+                mSerial.println(foundDevices.getCount());
+                mSerial.println("Scan done!");
                 pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
 #else
                 pBLEScan->stop();
                 pBLEScan->clearResults();
                 if(!pBLEScan->start(scanTime, nullptr, false)) {
-                    telnetSerial.println("Problem starting BLE scan!!");
+                    mSerial.println("Problem starting BLE scan!!");
                 }
 #endif   
+#endif
             }
         }   
     }   
@@ -644,7 +649,7 @@ void BluetoothScanner::startBluetoothScan(ScanType scanType)
 
     // Only scan if the last scan was long ago enough...  
     if( _millis > reference_scan_time + min_seconds_between_scans*1000 && scanMode == ScanType::None) {        
-        telnetSerial.printf("Starting search for devices with scantype %d\n  Set numScans to %d\n", (int)(scanType), numScans);
+        mSerial.printf("Starting search for devices with scantype %d\n  Set numScans to %d\n", (int)(scanType), numScans);
 
         scanMode = scanType;
 
@@ -672,8 +677,8 @@ void BluetoothScanner::startBluetoothScan(ScanType scanType)
         last_scan_iter_millis = _millis;
     }
     else {
-        telnetSerial.println("Skipping BT scan. Too soon dude...");
-        telnetSerial.printf("milllis %lu < %lu, scanIdx: %d\n", _millis, reference_scan_time + min_seconds_between_scans*1000, scanIndex);
+        mSerial.println("Skipping BT scan. Too soon dude...");
+        mSerial.printf("milllis %lu < %lu, scanIdx: %d\n", _millis, reference_scan_time + min_seconds_between_scans*1000, scanIndex);
     }
 }
 
@@ -685,7 +690,7 @@ bool BluetoothScanner::scanForNextDevice() {
             led.set(128);
             scanInProgress = 1;
             esp_bt_gap_read_remote_name(dev.mac);
-            telnetSerial.printf("Searching device: %s\n", dev.name.c_str());
+            mSerial.printf("Searching device: %s\n", dev.name.c_str());
             return true;
         }
     }
@@ -771,12 +776,12 @@ void BluetoothScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rm
     std::lock_guard<std::mutex> lock(btDevicesMutex);
     btDeviceId_t& dev = btDevices.at(scanIndex);
 
-    telnetSerial.printf("ScanResult Callback for dev(%d): %s, scansLeft %d \n", scanIndex, dev.name.c_str(), dev.scansLeft);
+    mSerial.printf("ScanResult Callback for dev(%d): %s, scansLeft %d \n", scanIndex, dev.name.c_str(), dev.scansLeft);
 
     // Decrement scansLeft for each finished scan:
     if (dev.scansLeft > 0) {
         dev.scansLeft--;
-        telnetSerial.printf("Decrement scansleft for dev(%d): %s to %d \n", scanIndex, dev.name.c_str(), dev.scansLeft);
+        mSerial.printf("Decrement scansleft for dev(%d): %s to %d \n", scanIndex, dev.name.c_str(), dev.scansLeft);
     }
 
     // Device found:
@@ -785,7 +790,7 @@ void BluetoothScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rm
         dev.state = 1;
 
         if(scanMode == ScanType::Arrival) {
-            telnetSerial.printf("Found device, stopping Arrival Scan for %s\n", dev.name.c_str());
+            mSerial.printf("Found device, stopping Arrival Scan for %s\n", dev.name.c_str());
             dev.scansLeft = 0; // Stop scanning, We've found him!
         }
 

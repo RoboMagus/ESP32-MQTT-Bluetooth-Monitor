@@ -47,10 +47,12 @@ upload_flags =
 
 ## Configuration
 After flasing your ESP32 some initial configuration is required. To begin, connect your phone to the ESP32's WiFi hotspot. This will have a name starting with ```ESP32_bt```, followed by unique characters based on the devices MAC address. The default firmware configuration requires the following credentials in order to connect to the AP: ```abc45678```. When connected navigate with your browser of choice to ```192.168.4.1``` to open the configuration menu.
+
 <img src="/doc/screenshots/main_menu.jpg" width=480px>
 
 Now it's best to first enter the __settings__ menu to start configuration there. Performing the WiFi configuration first will cause the device to restart and connect to your home network. You can still configure the device after this, it just requires some more steps to navigate to it's new IP again!
 The settings menu contains all settings related to the BT monitor application as shown below. The scan settings and BT devices can be skipped and configured later on. The important bits for now are the MQTT parameters to make sure the application can communicate.
+
 <img src="/doc/screenshots/parameter_page.jpg" width=480px>
 
 In case you need to revisit the configuration pages you can do so by navigating to the ESP32's IP address on your home network. To prevent others from tinkering with your device any access to it's webpage once it's connected to your WiFi network is password protected! To log on, use username ```admin``` and password ```1234```.
@@ -58,6 +60,7 @@ In case you need to revisit the configuration pages you can do so by navigating 
 ## Usage
 ### web control
 The ESP32 bluetooth scan status can be seen through the devices webpage by following the __BT Monitor__ link in the main menu. This page will show you all configured devices by name and MAC address, as well as their away / present state. From this page you can also trigger various scans and update the page to load the new scan results.
+
 <img src="/doc/screenshots/bt_monitor_page.png" width=480px>
 
 ### Home assistant

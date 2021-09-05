@@ -54,7 +54,7 @@ enum class ScanType{
 class BluetoothScanner : public BLEAdvertisedDeviceCallbacks
 {
 public:
-    BluetoothScanner() {
+    BluetoothScanner(Stream& serialStream) : mSerial(serialStream)  {
     }
     virtual ~BluetoothScanner() {
 
@@ -116,6 +116,8 @@ public:
 
 private:
 
+    Stream& mSerial;
+
     typedef enum {
         APP_GAP_STATE_IDLE = 0,
         APP_GAP_STATE_DEVICE_DISCOVERING,
@@ -135,7 +137,6 @@ private:
         esp_bd_addr_t bda;
         app_gap_state_t state;
     } app_gap_cb_t;
-
 
     app_gap_cb_t m_dev_info;
     std::vector<btDeviceId_t> btDevices;

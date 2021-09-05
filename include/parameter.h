@@ -14,8 +14,6 @@
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 #include <Preferences.h>
 
-#include "TelnetSerial.h"
-
 // Required available global entities:
 extern WiFiManager wm;
 extern Preferences preferences;
@@ -47,7 +45,6 @@ public:
     void storeValue() {
         // CustomHTLM does not store to NVS. No need to store it...
         if(getID() != nullptr) {
-            // telnetSerial.printf("Storing pref (%s): '%s'\n", WiFiManagerParameter::getID(), getValue());
             if(preferences.getString(WiFiManagerParameter::getID(),"") != WiFiManagerParameter::_value) {
              preferences.putString(WiFiManagerParameter::getID(), getValue());
             }
@@ -56,7 +53,6 @@ public:
 
     void setValue(const char *value) {
         if(_initialized) {
-            // telnetSerial.printf("setValue(); Storing pref (%s): '%s'\n", WiFiManagerParameter::getID(), value);
             preferences.putString(WiFiManagerParameter::getID(), value);
         }
         WiFiManagerParameter::setValue(value);

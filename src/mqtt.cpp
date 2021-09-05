@@ -4,8 +4,7 @@
 #include <Arduino.h>
 #include "parameter.h"
 #include "mqtt.h"
-
-#include "TelnetSerial.h"
+#include "stackDbgHelper.h"
 
 #ifndef MQTT_CLEAN_SESSION
 #define MQTT_CLEAN_SESSION          1          // 0 = No clean session, 1 = Clean session 
@@ -54,12 +53,12 @@ void MQTT::setup() {
 
   // Setup MQTT
   if(strlen(_mqtt_server) > 1) {
-    telnetSerial.printf("MQTT connecting to: %s:%s\n", _mqtt_server, _mqtt_port);
+    mSerial.printf("MQTT connecting to: %s:%s\n", _mqtt_server, _mqtt_port);
     mqtt_client.setServer(_mqtt_server, atoi(_mqtt_port));
     mqtt_client.setCallback(std::bind(&MQTT::mqtt_callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
   }
   else {
-    telnetSerial.println("MQTT parameters incomplete. Not setting up MQTT.");
+    mSerial.println("MQTT parameters incomplete. Not setting up MQTT.");
   }
 }
 
@@ -90,7 +89,7 @@ void MQTT::loop() {
               last_reconnect_attempt = 0;
           }
           else {
-            telnetSerial.println("Retrying MQTT connect in 5 seconds");
+            mSerial.println("Retrying MQTT connect in 5 seconds");
           }
       }
   }
@@ -119,14 +118,14 @@ std::string MQTT::trimWildcards(const char* topic) {
 //  Send a message to a broker topic
 void MQTT::send_message(const char *topic, const char *payload, bool retain)
 {
-    telnetSerial.printf("MQTT Outgoing on %s: ", topic);
-    telnetSerial.println(payload);
+    mSerial.printf("MQTT Outgoing on %s: ", topic);
+    mSerial.println(payload);
 
     bool result = mqtt_client.publish(topic, payload, retain);
 
     if (!result)
     {
-        telnetSerial.printf("MQTT publish to topic %s failed\n", topic);
+        mSerial.printf("MQTT publish to topic %s failed\n", topic);
     }
 }
 
@@ -164,17 +163,17 @@ void MQTT::clear_subscription_topics() {
 
 // -----------------------------------------------
 void MQTT::mqtt_callback(char* topic, byte* payload, unsigned int length) {
-  telnetSerial.print("Message arrived [");
-  telnetSerial.print(topic);
-  telnetSerial.print("] ");
+  mSerial.print("Message arrived [");
+  mSerial.print(topic);
+  mSerial.print("] ");
   for (unsigned int i = 0; i < length; i++) {
-    telnetSerial.print((char)payload[i]);
+    mSerial.print((char)payload[i]);
   }
-  telnetSerial.println();
+  mSerial.println();
 
   for (auto& cb : callback_functions) {
     if(cb.first == topic) {
-      telnetSerial.printf("Calling callback for topic '%s'\n", topic);
+      mSerial.printf("Calling callback for topic '%s'\n", topic);
       cb.second(payload, length);
     }
   }
@@ -187,11 +186,11 @@ bool MQTT::reconnect()
     // * Loop until we're reconnected
     int mqtt_reconnect_retries = 0;
 
-    telnetSerial.println("reconnect();");
+    mSerial.println("reconnect();");
     while (!mqtt_client.connected() && mqtt_reconnect_retries < mqtt_max_reconnect_tries)
     {
         mqtt_reconnect_retries++;
-        telnetSerial.printf("MQTT connection attempt %d / %d ...\n", mqtt_reconnect_retries, mqtt_max_reconnect_tries);
+        mSerial.printf("MQTT connection attempt %d / %d ...\n", mqtt_reconnect_retries, mqtt_max_reconnect_tries);
 
         // * Attempt to connect
 
@@ -199,7 +198,7 @@ bool MQTT::reconnect()
         if (mqtt_client.connect(_mqtt_server, _mqtt_username, _mqtt_password, _mqtt_state_topic_str.c_str(), 1, true, "offline", MQTT_CLEAN_SESSION))
         {
             delay(100);
-            telnetSerial.println(F("MQTT connected!"));
+            mSerial.println(F("MQTT connected!"));
             send_message(_mqtt_state_topic_str.c_str(), "online", true);
 
             delay(25);
@@ -207,7 +206,7 @@ bool MQTT::reconnect()
             // Subscribe to root topic
             for (auto topic : subscription_topics) {              
               bool ret = mqtt_client.subscribe(topic.c_str()); // topic may include wildcards. Needs to be trimmed for publish stuff..
-              telnetSerial.printf("MQTT root topic: '%s', subscription: %d\n", topic.c_str(), ret);
+              mSerial.printf("MQTT root topic: '%s', subscription: %d\n", topic.c_str(), ret);
               // Prevent broker disconnect:
               // mqtt_client.loop();
             }
@@ -215,10 +214,10 @@ bool MQTT::reconnect()
         }
         else
         {
-            telnetSerial.print(F("MQTT Connection failed: rc="));
-            telnetSerial.println(mqtt_client.state());
-            // telnetSerial.println(F(" Retrying in 5 seconds"));
-            // telnetSerial.println("");
+            mSerial.print(F("MQTT Connection failed: rc="));
+            mSerial.println(mqtt_client.state());
+            // mSerial.println(F(" Retrying in 5 seconds"));
+            // mSerial.println("");
 
             return false;
             // * Wait 5 seconds before retrying
@@ -229,7 +228,7 @@ bool MQTT::reconnect()
 
     if (mqtt_reconnect_retries >= mqtt_max_reconnect_tries)
     {
-        telnetSerial.printf("*** MQTT connection failed, giving up after %d tries ...\n", mqtt_reconnect_retries);
+        mSerial.printf("*** MQTT connection failed, giving up after %d tries ...\n", mqtt_reconnect_retries);
         return false;
     }
 
@@ -242,12 +241,12 @@ bool MQTT::reconnect()
 {
     SCOPED_STACK_ENTRY;
     _mqtt_reconnect_retries++;
-    telnetSerial.printf("MQTT connection attempt %d ...\n", _mqtt_reconnect_retries);
+    mSerial.printf("MQTT connection attempt %d ...\n", _mqtt_reconnect_retries);
 
     if (mqtt_client.connect(_clientId.c_str(), _mqtt_username, _mqtt_password, _mqtt_state_topic_str.c_str(), 1, true, "offline", MQTT_CLEAN_SESSION))
     {
         delay(50);
-        telnetSerial.println(F("MQTT connected!"));
+        mSerial.println(F("MQTT connected!"));
         send_message(_mqtt_state_topic_str.c_str(), "online", true);
 
         delay(25);
@@ -255,7 +254,7 @@ bool MQTT::reconnect()
         // Subscribe to root topic
         for (auto topic : subscription_topics) {              
           bool ret = mqtt_client.subscribe(topic.c_str()); // topic may include wildcards. Needs to be trimmed for publish stuff..
-          telnetSerial.printf("MQTT root topic: '%s', subscription: %d\n", topic.c_str(), ret);
+          mSerial.printf("MQTT root topic: '%s', subscription: %d\n", topic.c_str(), ret);
           // Prevent broker disconnect:
           mqtt_client.loop();
         }
@@ -263,8 +262,8 @@ bool MQTT::reconnect()
         return true;
     }
 
-    telnetSerial.print(F("MQTT Connection failed: rc="));
-    telnetSerial.println(mqtt_client.state());
+    mSerial.print(F("MQTT Connection failed: rc="));
+    mSerial.println(mqtt_client.state());
 
     return false;
 }

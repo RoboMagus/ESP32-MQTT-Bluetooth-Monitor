@@ -13,8 +13,6 @@
 // Arduino includes
 #include <Arduino.h>
 
-#include "TelnetSerial.h"
-
 struct stack_entry {
     uint32_t pc;
     const char* func;

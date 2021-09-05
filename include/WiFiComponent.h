@@ -33,6 +33,11 @@ class WiFiComponent {
 public:
     typedef std::function<void(void)> customHtmlHandler_t;
 
+    WiFiComponent(Stream& serialStream) : mSerial(serialStream) 
+    {
+        // Nothing
+    }
+
     void setup();
     void loop();
 
@@ -61,6 +66,7 @@ private:
     void handleRoute();
     void bindServerCallback();
 
+    Stream& mSerial;
 
     uint8_t otaBusy = 0;
     std::vector<std::function<void(void)>> ota_callback_functions;

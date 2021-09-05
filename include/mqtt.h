@@ -12,13 +12,14 @@
 #include <Arduino.h>
 #include <PubSubClient.h>
 #include "WiFiClient.h"
+#include "Stream.h"
 
 
 class MQTT {
 public:
     typedef std::function<void(const byte*, unsigned int)> CallbackFunction_t;
 
-    MQTT() : mqtt_client(espClient)
+    MQTT(Stream& serialStream) : mSerial(serialStream), mqtt_client(espClient)
     {
         _clientId = String("ESP32_bt") + String(WIFI_getChipId(),HEX);
         // Nothing..
@@ -46,7 +47,8 @@ private:
     void mqtt_callback(char* topic, byte* payload, unsigned int length);
     bool reconnect();
 
-    WiFiClient espClient;
+    Stream&      mSerial;
+    WiFiClient   espClient;
     PubSubClient mqtt_client;
 
     // Stored MQTT parameters 

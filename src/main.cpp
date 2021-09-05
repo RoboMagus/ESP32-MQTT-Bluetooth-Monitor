@@ -60,9 +60,12 @@ static_assert(MAX_NUM_STORED_BLUETOOTH_DEVICES <= 40, "Cannot fit more than 40 b
 
 #ifndef NO_USE_TELNET_SERIAL
 TelnetSerial telnetSerial;
+Stream& mSerial = telnetSerial;
+#else
+Stream& mSerial = Serial;
 #endif
 Preferences preferences;
-WiFiManager wm(telnetSerial);
+WiFiManager wm(mSerial);
 LED led;
 
 // >>> All parameters in order shown in WiFiManager:
@@ -85,16 +88,16 @@ Parameter bluetooth_monitor_departure_scans            (PSTR("bm_depart"),     P
 Parameter bluetooth_monitor_seconds_between_scan_iters (PSTR("bm_iter_time"),  PSTR("Seconds between scan tries"),    "3",     6);
 Parameter bluetooth_monitor_beacon_expiration          (PSTR("bm_beacon_exp"), PSTR("Beacon expiration time (s)"),    "240",   6);
 Parameter bluetooth_monitor_min_time_between_scans     (PSTR("bm_min_time"),   PSTR("Min. time between scans (s)"),   "10",    6);
-Parameter bluetooth_monitor_periodic_scan_interval     (PSTR("bm_period"),     PSTR("Periodic scan interval (s)"),    "",      6);
+Parameter bluetooth_monitor_periodic_scan_interval     (PSTR("bm_period"),     PSTR("Periodic scan interval (s)<br>(Leave empty to disable periodic scanning)"),    "",      6);
 
 // Known Static Bluetooth MAC 
 // Nested struct helper to generate objects and reduce boilerplate...
 NestWrapper<BluetoothParameter, MAX_NUM_STORED_BLUETOOTH_DEVICES> bluetooth_monitor_parameter_sets;
 
 // <<<
-WiFiComponent wifi;
-BluetoothScanner btScanner;
-MQTT mqtt;
+WiFiComponent wifi(mSerial);
+BluetoothScanner btScanner(mSerial);
+MQTT mqtt(mSerial);
 
 Timezone mTime;
 // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -160,7 +163,7 @@ static void esp_dump_per_task_heap_info(void)
             }
         }
         
-        telnetSerial.printf("Task: %22s -> CAP_8BIT: %6d CAP_32BIT: %3d -> HighWaterMark: %5d\n",
+        mSerial.printf("Task: %22s -> CAP_8BIT: %6d CAP_32BIT: %3d -> HighWaterMark: %5d\n",
                 heap_info.totals[i].task ? pcTaskGetTaskName(heap_info.totals[i].task) : "Pre-Scheduler allocs" ,
                 heap_info.totals[i].size[0],    // Heap size with CAP_8BIT capabilities
                 heap_info.totals[i].size[1],    // Heap size with CAP32_BIT capabilities
@@ -169,19 +172,19 @@ static void esp_dump_per_task_heap_info(void)
         feedLoopWDT(); // Must be done <= 360 mS
     }
 
-    telnetSerial.printf("Free heap at start: %d, min free heap ever: %d\n", startFreeHeap, xPortGetMinimumEverFreeHeapSize());
-    telnetSerial.printf("Free heap size: %d, largest fee block: %d\n", heap_caps_get_free_size(MALLOC_CAP_8BIT), heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+    mSerial.printf("Free heap at start: %d, min free heap ever: %d\n", startFreeHeap, xPortGetMinimumEverFreeHeapSize());
+    mSerial.printf("Free heap size: %d, largest fee block: %d\n", heap_caps_get_free_size(MALLOC_CAP_8BIT), heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
 
-    telnetSerial.print("HeapCapsFreeSize - Internal: ");
-    telnetSerial.print(heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
-    telnetSerial.print(" SPIRAM: ");
-    telnetSerial.print(heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
-    telnetSerial.print(" IRAM8: ");
-    telnetSerial.print(heap_caps_get_free_size(MALLOC_CAP_IRAM_8BIT));
-    telnetSerial.print(" Default: ");
-    telnetSerial.println(heap_caps_get_free_size(MALLOC_CAP_DEFAULT));
+    mSerial.print("HeapCapsFreeSize - Internal: ");
+    mSerial.print(heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+    mSerial.print(" SPIRAM: ");
+    mSerial.print(heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    mSerial.print(" IRAM8: ");
+    mSerial.print(heap_caps_get_free_size(MALLOC_CAP_IRAM_8BIT));
+    mSerial.print(" Default: ");
+    mSerial.println(heap_caps_get_free_size(MALLOC_CAP_DEFAULT));
 
-    telnetSerial.printf("\n\n");
+    mSerial.printf("\n\n");
 }
 
 void heap_caps_alloc_failed_hook(size_t requested_size, uint32_t caps, const char *function_name)
@@ -341,8 +344,8 @@ void setup() {
 
     setupPreferences();
 
-    telnetSerial.println("Booting");
-    ezt::setDebug(INFO, telnetSerial);
+    mSerial.println("Booting");
+    ezt::setDebug(INFO, mSerial);
 
     if(error != ESP_OK) {
         Serial.printf("failed alloc callback error: %d\n", error);
@@ -396,7 +399,7 @@ void setup() {
     wifi.setup();
     // Stop bluetooth on OTA to reduce chance of failures..
     wifi.registerOtaStartCallback([](){
-        telnetSerial.println("Stopping BtScanner for OTA...");
+        mSerial.println("Stopping BtScanner for OTA...");
         btScanner.stop();
     });
 
@@ -413,10 +416,10 @@ void setup() {
         esp_bd_addr_t mac;
         // If valid mac address, add it!
         const char* mac_str = bluetooth_monitor_parameter_sets.data[i].getMacAddress();
-        telnetSerial.printf("Validating MAC: %s \n", mac_str);
+        mSerial.printf("Validating MAC: %s \n", mac_str);
         if(str2bda(mac_str, mac)) {
             const char* alias = bluetooth_monitor_parameter_sets.data[i].getAlias();
-            telnetSerial.printf("  Adding device: %s, with MAC: %s \n", alias, mac_str);
+            mSerial.printf("  Adding device: %s, with MAC: %s \n", alias, mac_str);
             btScanner.addKnownDevice(mac, alias);
         }
     }
@@ -427,7 +430,7 @@ void setup() {
 
     // Stop bluetooth on OTA to reduce chance of failures..
     wifi.registerOtaStartCallback([](){
-        telnetSerial.println("Stopping BtScanner for OTA...");
+        mSerial.println("Stopping BtScanner for OTA...");
         btScanner.stop();
     });
     // Run MQTT setup again when new parameters are made available
@@ -466,9 +469,9 @@ void loop() {
     unsigned long current_millis = millis();
     if(current_millis > last_millis + interval) {
         last_millis = current_millis;
-        telnetSerial.println(current_millis);
+        mSerial.println(current_millis);
         
-	    telnetSerial.println(mTime.dateTime());
+	    mSerial.println(mTime.dateTime());
         esp_dump_per_task_heap_info();
 
         count++;
