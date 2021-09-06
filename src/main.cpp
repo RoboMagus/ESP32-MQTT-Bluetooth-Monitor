@@ -26,7 +26,7 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
-#include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
+#include <WiFiManager.h>
 #include <ArduinoOTA.h>
 #include "time.h"
 
@@ -120,6 +120,7 @@ static size_t s_prepopulated_num = 0;
 static heap_task_totals_t s_totals_arr[MAX_TASK_NUM];
 static heap_task_block_t s_block_arr[MAX_BLOCK_NUM];
 
+// -----------------------------------------------
 extern "C" void esp_task_wdt_isr_user_handler(void)
 {
     printf("\nSTACK:\n");
@@ -130,6 +131,7 @@ extern "C" void esp_task_wdt_isr_user_handler(void)
     }
 }
 
+// -----------------------------------------------
 static void esp_dump_per_task_heap_info(void)
 {
     SCOPED_STACK_ENTRY;
@@ -187,6 +189,7 @@ static void esp_dump_per_task_heap_info(void)
     mSerial.printf("\n\n");
 }
 
+// -----------------------------------------------
 void heap_caps_alloc_failed_hook(size_t requested_size, uint32_t caps, const char *function_name)
 {
     // No Printf to avoid MALLOCS!!!
@@ -220,6 +223,7 @@ void heap_caps_alloc_failed_hook(size_t requested_size, uint32_t caps, const cha
     //Serial.printf("%s in task '%s' was called but failed to allocate %d bytes with 0x%X capabilities. HighWaterMark: %lu \n",function_name, pcTaskGetTaskName(NULL), requested_size, caps, (unsigned long)uxTaskGetStackHighWaterMark(NULL));
 }
 
+// -----------------------------------------------
 #define PREFERENCES_TAG_VALUE (54)
 void setupPreferences() {
     preferences.begin("E32BT", false);
@@ -246,6 +250,15 @@ void setupPreferences() {
     //preferences.remove("counter");
 }
 
+// -----------------------------------------------
+void setupMQTT() {
+    mqtt.setup( mqtt_server.getValue(),
+                mqtt_port.getValue(),
+                mqtt_username.getValue(),
+                mqtt_password.getValue() );
+}
+
+// -----------------------------------------------
 void setupMqttCallbacks() {
     // Clear existing topics and callbacks based on old parameters:
     mqtt.clear_subscription_topics();
@@ -319,6 +332,7 @@ void setupMqttCallbacks() {
     });
 }
 
+// -----------------------------------------------
 void setupTimeZone() {    
 	// Or country codes for countries that do not span multiple timezones
 	//mTime.setLocation(F("nl"));
@@ -328,7 +342,9 @@ void setupTimeZone() {
 	Serial.println(mTime.dateTime());
 }
 
+
 #if CONFIG_AUTOSTART_ARDUINO
+// -----------------------------------------------
 void setup() {
     startFreeHeap = xPortGetFreeHeapSize();
     esp_err_t error = heap_caps_register_failed_alloc_callback(heap_caps_alloc_failed_hook);
@@ -406,7 +422,7 @@ void setup() {
 #ifndef NO_USE_TELNET_SERIAL
     telnetSerial.begin(); // Start the telnet bit...
 #endif
-    mqtt.setup();
+    setupMQTT();
     setupMqttCallbacks();
 
     // Setup bluetooth AFTER WiFi such that the persistent parameters are loaded!
@@ -424,9 +440,9 @@ void setup() {
         }
     }
 
-    // Setup EZtime
-	setDebug(INFO);	
-	waitForSync();
+    // EZTime: sync time
+	ezt::waitForSync();
+    setupTimeZone();
 
     // Stop bluetooth on OTA to reduce chance of failures..
     wifi.registerOtaStartCallback([](){
@@ -434,7 +450,7 @@ void setup() {
         btScanner.stop();
     });
     // Run MQTT setup again when new parameters are made available
-    wifi.registerParamSaveCallback(std::bind(&MQTT::setup, &mqtt)); // This causes pubSub to destruct and panic!!
+    wifi.registerParamSaveCallback(setupMQTT); // This causes pubSub to destruct and panic!!
     wifi.registerParamSaveCallback(setupMqttCallbacks);
     wifi.registerParamSaveCallback(setupTimeZone);
     // ToDo: Reload of Bluetooth parameters
@@ -443,17 +459,19 @@ void setup() {
     led.set(OFF);
 
     btScanner.startBluetoothScan(ScanType::Either);
-    setupTimeZone();
 
     esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
 
     enableLoopWDT();
 }
 
-uint16_t count = 0;
-
+#if MEM_DEBUG_DUMP_ENABLED
 unsigned long last_millis = 0;
 unsigned long interval=10000; // 10sec
+uint16_t count = 0;
+#endif
+
+// -----------------------------------------------
 void loop() {
     SCOPED_STACK_ENTRY;
 
@@ -466,6 +484,7 @@ void loop() {
     delay(10);
     btScanner.loop();
 
+#if MEM_DEBUG_DUMP_ENABLED
     unsigned long current_millis = millis();
     if(current_millis > last_millis + interval) {
         last_millis = current_millis;
@@ -476,11 +495,13 @@ void loop() {
 
         count++;
     }    
+#endif
 
     // WDT Feeding is done in Arduino scope outside of the loop...
 	// Delay needed to give idle task some room!!
     delay(10);
 }
+
 #else
 #ERROR wrong SDK configuration!
 #endif 

@@ -25,7 +25,11 @@ public:
         // Nothing..
     }
 
-    void setup();
+    void setup(
+      const char* mqtt_server,
+      const char* mqtt_port,
+      const char* mqtt_username,
+      const char* mqtt_password);
     void loop();
 
     void setStateTopic(std::string state_topic);
@@ -41,8 +45,6 @@ public:
     void clear_subscription_topics();
 
 private:
-
-    void loadParams();
 
     void mqtt_callback(char* topic, byte* payload, unsigned int length);
     bool reconnect();

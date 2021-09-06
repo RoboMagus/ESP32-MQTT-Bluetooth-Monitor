@@ -10,12 +10,6 @@
 #define MQTT_CLEAN_SESSION          1          // 0 = No clean session, 1 = Clean session 
 #endif
 
-// Required MQTT parameters:
-extern Parameter mqtt_server;
-extern Parameter mqtt_port;
-extern Parameter mqtt_username;
-extern Parameter mqtt_password;
-
 // Monitor arguments to be used:
 // r: repeatedly scan for arrival / departure of known devices
 // x: retain mqtt status messages
@@ -43,8 +37,17 @@ extern Parameter mqtt_password;
 // Local functions:
 
 // -----------------------------------------------
-void MQTT::setup() {
-  loadParams();
+void MQTT::setup(
+      const char* mqtt_server,
+      const char* mqtt_port,
+      const char* mqtt_username,
+      const char* mqtt_password) 
+{
+  // Store MQTT server parameters
+  _mqtt_server   = mqtt_server;
+  _mqtt_port     = mqtt_port;
+  _mqtt_username = mqtt_username;
+  _mqtt_password = mqtt_password;
 
   // In case of a re-initialization with new parameters
   if(mqtt_client.connected()) {
@@ -60,15 +63,6 @@ void MQTT::setup() {
   else {
     mSerial.println("MQTT parameters incomplete. Not setting up MQTT.");
   }
-}
-
-// -----------------------------------------------
-void MQTT::loadParams() {
-  // Read MQTT parameters from storage:
-  _mqtt_server   = mqtt_server.getValue();
-  _mqtt_port     = mqtt_port.getValue();
-  _mqtt_username = mqtt_username.getValue();
-  _mqtt_password = mqtt_password.getValue();
 }
 
 // -----------------------------------------------

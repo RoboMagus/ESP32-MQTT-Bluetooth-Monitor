@@ -50,14 +50,6 @@ void WiFiComponent::setup() {
     setupConfigPortal();
 
     setupArduinoOTA();
-
-    
-    //configTime(gmtOffset_sec, daylightOffset_sec, nlNtpServer, eurNtpServer, worldNtpServer);
-    // sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    // sntp_setservername(0, nlNtpServer);
-    // sntp_init();
-
-
 }
 
 // -----------------------------------------------
