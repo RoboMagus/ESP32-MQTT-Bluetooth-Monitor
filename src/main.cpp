@@ -89,6 +89,7 @@ Parameter bluetooth_monitor_seconds_between_scan_iters (PSTR("bm_iter_time"),  P
 Parameter bluetooth_monitor_beacon_expiration          (PSTR("bm_beacon_exp"), PSTR("Beacon expiration time (s)"),    "240",   6);
 Parameter bluetooth_monitor_min_time_between_scans     (PSTR("bm_min_time"),   PSTR("Min. time between scans (s)"),   "10",    6);
 Parameter bluetooth_monitor_periodic_scan_interval     (PSTR("bm_period"),     PSTR("Periodic scan interval (s)<br>(Leave empty to disable periodic scanning)"),    "",      6);
+Parameter bluetooth_monitor_retain_flag                (PSTR("bm_retain"),     PSTR("MQTT retain flag (true/false)"), "false", 6);
 
 // Known Static Bluetooth MAC 
 // Nested struct helper to generate objects and reduce boilerplate...
@@ -428,6 +429,7 @@ void setup() {
     // Setup bluetooth AFTER WiFi such that the persistent parameters are loaded!
     btScanner.init();
     btScanner.setup();
+    btScanner.setRetainFlag(param2bool(bluetooth_monitor_retain_flag));
     for(int i = 0; i < bluetooth_monitor_parameter_sets.size; i++) {
         esp_bd_addr_t mac;
         // If valid mac address, add it!
@@ -453,7 +455,10 @@ void setup() {
     wifi.registerParamSaveCallback(setupMQTT); // This causes pubSub to destruct and panic!!
     wifi.registerParamSaveCallback(setupMqttCallbacks);
     wifi.registerParamSaveCallback(setupTimeZone);
-    // ToDo: Reload of Bluetooth parameters
+    wifi.registerParamSaveCallback([](){
+        btScanner.setRetainFlag(param2bool(bluetooth_monitor_retain_flag));
+        // ToDo: Reload the rest of Bluetooth parameters
+    });
 
     // Turn off led at the end of setup
     led.set(OFF);

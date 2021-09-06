@@ -68,6 +68,8 @@ public:
 
     void stop();
 
+    void setRetainFlag(bool flag);
+
     void startBluetoothScan(ScanType scanType);
 
     void addKnownDevice   (const std::string&  input);
@@ -164,6 +166,7 @@ private:
     uint32_t beacon_expiration_seconds;
     uint32_t min_seconds_between_scans;
     uint32_t periodic_scan_interval;
+    bool     m_retain = false;
 
     unsigned long last_arrival_scan_time = 0;
     unsigned long last_departure_scan_time = 0;

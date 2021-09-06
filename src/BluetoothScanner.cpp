@@ -640,6 +640,11 @@ void BluetoothScanner::setLastScanTime(ScanType scanType, unsigned long time) {
 }
 
 // -----------------------------------------------
+void BluetoothScanner::setRetainFlag(bool flag) {
+    m_retain = flag;
+}
+
+// -----------------------------------------------
 void BluetoothScanner::startBluetoothScan(ScanType scanType) 
 {
     SCOPED_STACK_ENTRY;
@@ -797,7 +802,7 @@ void BluetoothScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rm
         ESP_LOGI(GAP_TAG, "Remote device name: %s", remoteNameParam.rmt_name);
         std::string topic = mqtt.trimWildcards(mqtt_topic.getValue()) + "/" + scanner_identity + "/" + dev.name.c_str();
         mqtt.send_message(topic.c_str(), 
-                createConfidenceMessage(bda2str(dev.mac, macbuf, 18), dev.confidence, dev.name.c_str(), mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)").c_str()).c_str()
+                createConfidenceMessage(bda2str(dev.mac, macbuf, 18), dev.confidence, dev.name.c_str(), mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)").c_str()).c_str(), m_retain
             );
     }
     else {

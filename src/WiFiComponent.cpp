@@ -22,6 +22,9 @@
 #include "WiFiComponent.h"
 #include "led.h"
 
+// Required available global entities:
+extern WiFiManager wm;
+
 const char* worldNtpServer = "pool.ntp.org";
 const char* eurNtpServer   = "europe.pool.ntp.org";
 const char* nlNtpServer    = "nl.pool.ntp.org";
