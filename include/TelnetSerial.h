@@ -257,11 +257,4 @@ public:
 };
 
 
-#ifdef NO_USE_TELNET_SERIAL
-    #define telnetSerial Serial
-#else
-    extern TelnetSerial telnetSerial;
-#endif
-
-
 #endif

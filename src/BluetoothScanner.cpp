@@ -44,16 +44,6 @@
 
 #define GAP_CALLBACK_SIGNATURE void(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
 
-extern Parameter mqtt_identity;
-extern Parameter mqtt_topic;
-
-extern Parameter bluetooth_monitor_arrival_scans;
-extern Parameter bluetooth_monitor_departure_scans;
-extern Parameter bluetooth_monitor_seconds_between_scan_iters;
-extern Parameter bluetooth_monitor_beacon_expiration;
-extern Parameter bluetooth_monitor_min_time_between_scans;
-extern Parameter bluetooth_monitor_periodic_scan_interval;
-
 extern Timezone mTime;
 
 #define ENDIAN_CHANGE_U16(x) ((((x)&0xFF00) >> 8) + (((x)&0xFF) << 8))
@@ -287,29 +277,10 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
 }
 
 
-
-
-
-
 // =================================================================================
 // =================================================================================
 //      Class Functions:
 // =================================================================================
-
-// -----------------------------------------------
-void BluetoothScanner::loadSettings() {
-    num_arrival_scans         = atoi(bluetooth_monitor_arrival_scans.getValue());
-    num_departure_scans       = atoi(bluetooth_monitor_departure_scans.getValue());
-    scan_iter_interval        = strtoul(bluetooth_monitor_seconds_between_scan_iters.getValue(), NULL, 0);
-    beacon_expiration_seconds = strtoul(bluetooth_monitor_beacon_expiration.getValue(), NULL, 0);
-    min_seconds_between_scans = strtoul(bluetooth_monitor_min_time_between_scans.getValue(), NULL, 0);
-    periodic_scan_interval    = strtoul(bluetooth_monitor_periodic_scan_interval.getValue(), NULL, 0);
-
-    scanner_identity = mqtt_identity.getValue();
-
-    mSerial.printf("BT Scanner settings:\n  num_arrival_scans: %d\n  num_departure_scans: %d\n  scan_iter_interval: %lu\n  beacon_expiration_seconds: %d\n  min_seconds_between_scans: %d\n  periodic_scan_interval: %d\n  scanner_identity: %s\n\n",
-        num_arrival_scans, num_departure_scans, scan_iter_interval, beacon_expiration_seconds, min_seconds_between_scans, periodic_scan_interval, scanner_identity);
-}
 
 // -----------------------------------------------
 void BluetoothScanner::update_device_info(esp_bt_gap_cb_param_t *param)
@@ -502,9 +473,6 @@ void BluetoothScanner::setup()
 //  }
 //  buf = osi_calloc(buf_size);
 
-
-    loadSettings();
-
 }
 
 // -----------------------------------------------
@@ -640,6 +608,47 @@ void BluetoothScanner::setLastScanTime(ScanType scanType, unsigned long time) {
 }
 
 // -----------------------------------------------
+void BluetoothScanner::setNumArrivalScans(uint8_t val) {
+    num_arrival_scans = val;
+}
+
+// -----------------------------------------------
+void BluetoothScanner::setNumDepartureScans(uint8_t val) {
+    num_departure_scans = val;
+}
+
+// -----------------------------------------------
+void BluetoothScanner::setSecondsBetweenScanIters(unsigned long val) {
+    scan_iter_interval = val;
+}
+
+// -----------------------------------------------
+void BluetoothScanner::setBeaconExpiration(uint32_t val) {
+    beacon_expiration_seconds = val;
+
+}
+
+// -----------------------------------------------
+void BluetoothScanner::setMinTimeBetweenScans(uint32_t val) {
+    min_seconds_between_scans = val;
+}
+
+// -----------------------------------------------
+void BluetoothScanner::setPeriodicScanInterval(uint32_t val) {
+    periodic_scan_interval = val;
+}
+
+// -----------------------------------------------
+void BluetoothScanner::setMqttTopic(const char* topic){
+    m_mqtt_topic = topic;
+}
+
+// -----------------------------------------------
+void BluetoothScanner::setScannerIdentity(const char* identity){
+    m_scanner_identity = identity;
+}
+
+// -----------------------------------------------
 void BluetoothScanner::setRetainFlag(bool flag) {
     m_retain = flag;
 }
@@ -759,6 +768,14 @@ void BluetoothScanner::deleteKnownDevice(const esp_bd_addr_t mac) {
     removeFromBtDevices(mac);
 }
 
+
+// -----------------------------------------------
+void BluetoothScanner::clearKnownDevices() {
+    std::lock_guard<std::mutex> lock(btDevicesMutex);
+    btDevices.clear();
+}
+
+
 // -----------------------------------------------
 const std::vector<BluetoothScanner::btDeviceId_t>& BluetoothScanner::getBtDeviceStates() {
     std::lock_guard<std::mutex> lock(btDevicesMutex);
@@ -800,7 +817,7 @@ void BluetoothScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rm
         }
 
         ESP_LOGI(GAP_TAG, "Remote device name: %s", remoteNameParam.rmt_name);
-        std::string topic = mqtt.trimWildcards(mqtt_topic.getValue()) + "/" + scanner_identity + "/" + dev.name.c_str();
+        std::string topic = std::string(m_mqtt_topic) + "/" + m_scanner_identity + "/" + dev.name.c_str();
         mqtt.send_message(topic.c_str(), 
                 createConfidenceMessage(bda2str(dev.mac, macbuf, 18), dev.confidence, dev.name.c_str(), mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)").c_str()).c_str(), m_retain
             );
@@ -820,7 +837,7 @@ void BluetoothScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rm
             dev.confidence = 0;
         }
         ESP_LOGI(GAP_TAG, "Remote device name read failed. Status: %d", remoteNameParam.stat);
-        std::string topic = mqtt.trimWildcards(mqtt_topic.getValue()) + "/" + scanner_identity + "/" + dev.name.c_str();
+        std::string topic = std::string(m_mqtt_topic) + "/" + m_scanner_identity + "/" + dev.name.c_str();
         mqtt.send_message(topic.c_str(), 
                 createConfidenceMessage(bda2str(dev.mac, macbuf, 18), dev.confidence, dev.name.c_str(), mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)").c_str()).c_str()
             );

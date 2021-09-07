@@ -68,7 +68,15 @@ public:
 
     void stop();
 
-    void setRetainFlag(bool flag);
+    void setNumArrivalScans         (uint8_t       val     );
+    void setNumDepartureScans       (uint8_t       val     );
+    void setSecondsBetweenScanIters (unsigned long val     );
+    void setBeaconExpiration        (uint32_t      val     );
+    void setMinTimeBetweenScans     (uint32_t      val     );
+    void setPeriodicScanInterval    (uint32_t      val     );
+    void setMqttTopic               (const char*   topic   );
+    void setScannerIdentity         (const char*   identity);
+    void setRetainFlag              (bool          flag    );
 
     void startBluetoothScan(ScanType scanType);
 
@@ -76,14 +84,14 @@ public:
     void addKnownDevice   (const esp_bd_addr_t mac, const char* alias);
     void deleteKnownDevice(const std::string&  mac);
     void deleteKnownDevice(const esp_bd_addr_t mac);
-
+    void clearKnownDevices();
+    
     // BLE advertisement results:
     void onResult(BLEAdvertisedDevice advertisedDevice);
     
     void HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdvertisedDeviceResult);
 
 private:
-    void loadSettings();
     void removeFromBtDevices(const esp_bd_addr_t mac);
 
     uint8_t getNumScans(ScanType scanType);
@@ -159,13 +167,14 @@ private:
     std::queue<BLEAdvertisedDevice> bleAdvertisedDeviceResultQueue;
 
     // Scanner parameters from storage:
-    const char* scanner_identity;
     uint8_t num_arrival_scans;
     uint8_t num_departure_scans;
     unsigned long scan_iter_interval;
     uint32_t beacon_expiration_seconds;
     uint32_t min_seconds_between_scans;
     uint32_t periodic_scan_interval;
+    const char* m_mqtt_topic;
+    const char* m_scanner_identity;
     bool     m_retain = false;
 
     unsigned long last_arrival_scan_time = 0;

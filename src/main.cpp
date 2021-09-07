@@ -334,6 +334,35 @@ void setupMqttCallbacks() {
 }
 
 // -----------------------------------------------
+void setupBtScanner() {    
+    btScanner.setMqttTopic(mqtt.trimWildcards(mqtt_topic.getValue()).c_str());
+    btScanner.setScannerIdentity(mqtt_identity.getValue());
+    btScanner.setRetainFlag(param2bool(bluetooth_monitor_retain_flag));        
+
+    btScanner.setNumArrivalScans        (atoi   (bluetooth_monitor_arrival_scans.getValue()));
+    btScanner.setNumDepartureScans      (atoi   (bluetooth_monitor_departure_scans.getValue()));
+    btScanner.setSecondsBetweenScanIters(strtoul(bluetooth_monitor_seconds_between_scan_iters.getValue(), NULL, 0));
+    btScanner.setBeaconExpiration       (strtoul(bluetooth_monitor_beacon_expiration.getValue(), NULL, 0));
+    btScanner.setMinTimeBetweenScans    (strtoul(bluetooth_monitor_min_time_between_scans.getValue(), NULL, 0));
+    btScanner.setPeriodicScanInterval   (strtoul(bluetooth_monitor_periodic_scan_interval.getValue(), NULL, 0));
+    // ToDo: Reload the rest of Bluetooth parameters
+
+    // (Re)Load known BT devices:
+    btScanner.clearKnownDevices();
+    for(int i = 0; i < bluetooth_monitor_parameter_sets.size; i++) {
+        esp_bd_addr_t mac;
+        // If valid mac address, add it!
+        const char* mac_str = bluetooth_monitor_parameter_sets.data[i].getMacAddress();
+        mSerial.printf("Validating MAC: %s \n", mac_str);
+        if(str2bda(mac_str, mac)) {
+            const char* alias = bluetooth_monitor_parameter_sets.data[i].getAlias();
+            mSerial.printf("  Adding device: %s, with MAC: %s \n", alias, mac_str);
+            btScanner.addKnownDevice(mac, alias);
+        }
+    }
+}
+
+// -----------------------------------------------
 void setupTimeZone() {    
 	// Or country codes for countries that do not span multiple timezones
 	//mTime.setLocation(F("nl"));
@@ -427,20 +456,8 @@ void setup() {
     setupMqttCallbacks();
 
     // Setup bluetooth AFTER WiFi such that the persistent parameters are loaded!
-    btScanner.init();
-    btScanner.setup();
-    btScanner.setRetainFlag(param2bool(bluetooth_monitor_retain_flag));
-    for(int i = 0; i < bluetooth_monitor_parameter_sets.size; i++) {
-        esp_bd_addr_t mac;
-        // If valid mac address, add it!
-        const char* mac_str = bluetooth_monitor_parameter_sets.data[i].getMacAddress();
-        mSerial.printf("Validating MAC: %s \n", mac_str);
-        if(str2bda(mac_str, mac)) {
-            const char* alias = bluetooth_monitor_parameter_sets.data[i].getAlias();
-            mSerial.printf("  Adding device: %s, with MAC: %s \n", alias, mac_str);
-            btScanner.addKnownDevice(mac, alias);
-        }
-    }
+    btScanner.init();  // ESP Bluetooth component, HAL, etc.
+    setupBtScanner(); // Scanner configuration / settings 
 
     // EZTime: sync time
 	ezt::waitForSync();
@@ -455,10 +472,7 @@ void setup() {
     wifi.registerParamSaveCallback(setupMQTT); // This causes pubSub to destruct and panic!!
     wifi.registerParamSaveCallback(setupMqttCallbacks);
     wifi.registerParamSaveCallback(setupTimeZone);
-    wifi.registerParamSaveCallback([](){
-        btScanner.setRetainFlag(param2bool(bluetooth_monitor_retain_flag));
-        // ToDo: Reload the rest of Bluetooth parameters
-    });
+    wifi.registerParamSaveCallback(setupBtScanner);
 
     // Turn off led at the end of setup
     led.set(OFF);
