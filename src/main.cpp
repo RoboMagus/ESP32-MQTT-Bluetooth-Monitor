@@ -267,11 +267,19 @@ void setupMqttCallbacks() {
 
     std::string baseTopic = mqtt.trimWildcards(mqtt_topic.getValue());
     mqtt.setStateTopic(baseTopic + "/" + mqtt_identity.getValue() + "/status");
+    mqtt.setIpTopic(baseTopic + "/" + mqtt_identity.getValue() + "/IP");
+
     // ToDo: this becomes a problem when reloading parameters at runtime!!
     // FIX THIS!
     //mqtt.add_subscription_topic(mqtt_topic.getValue()); //TEST
     mqtt.add_subscription_topic((baseTopic + "/scan/#").c_str());
     mqtt.add_subscription_topic((baseTopic + "/setup/#").c_str());
+    mqtt.add_subscription_topic((baseTopic + "/" + mqtt_identity.getValue() + "/restart").c_str());
+    mqtt.add_callback((baseTopic + "/" + mqtt_identity.getValue() + "/restart").c_str(), [](const byte* payload, unsigned int length) {
+        mSerial.println("Restarting!!");
+        delay(1000);
+        ESP.restart();
+    });
     mqtt.add_callback((baseTopic + "/scan/ARRIVE").c_str(), [](const byte* payload, unsigned int length) {
         btScanner.startBluetoothScan(ScanType::Arrival);
     });

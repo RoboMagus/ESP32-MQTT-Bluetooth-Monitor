@@ -33,6 +33,7 @@ public:
     void loop();
 
     void setStateTopic(std::string state_topic);
+    void setIpTopic(std::string ip_topic);
     static std::string trimWildcards(const char* topic);
 
     void send_message(const char *topic, const char *payload, bool retain = false);
@@ -61,7 +62,8 @@ private:
 
     uint32_t _mqtt_reconnect_retries = 0;
 
-    std::string _mqtt_state_topic_str;
+    std::string _mqtt_state_topic_str = "";
+    std::string _mqtt_ip_topic_str    = "";
     String _clientId;
 
     // MQTT Last reconnection counter

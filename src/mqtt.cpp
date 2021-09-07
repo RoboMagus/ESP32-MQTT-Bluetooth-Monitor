@@ -99,6 +99,11 @@ void MQTT::setStateTopic(std::string state_topic) {
 }
 
 // -----------------------------------------------
+void MQTT::setIpTopic(std::string ip_topic) {
+  _mqtt_ip_topic_str = ip_topic;
+}
+
+// -----------------------------------------------
 std::string MQTT::trimWildcards(const char* topic) {
   const char* trimChars = " \t\n\r\f\v#/";
   std::string trimmed_topic = topic;
@@ -242,6 +247,11 @@ bool MQTT::reconnect()
         delay(50);
         mSerial.println(F("MQTT connected!"));
         send_message(_mqtt_state_topic_str.c_str(), "online", true);
+
+        if(!_mqtt_ip_topic_str.empty()) {
+          delay(10);
+          send_message(_mqtt_ip_topic_str.c_str(), WiFi.localIP().toString().c_str(), true);
+        }
 
         delay(25);
         
