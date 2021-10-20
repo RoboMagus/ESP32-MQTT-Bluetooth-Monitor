@@ -42,7 +42,12 @@
 
 #define BLE_SCAN_AFTER_READ_REMOTE_NAMES (0)
 
-#define GAP_CALLBACK_SIGNATURE void(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
+
+#define BLE_SCAN_COMPLETE_CALLBACK_SIGNATURE void(BLEScanResults)
+#define GAP_CALLBACK_SIGNATURE               void(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
+
+typedef void (*scanComplete_cb_t)(BLEScanResults);
+
 
 extern Timezone mTime;
 
@@ -169,14 +174,14 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
     SCOPED_STACK_ENTRY;
     if (bleAdvertisedDeviceResult.haveName())
     {
-    // mSerial.print("Device name: ");
-    // mSerial.println(advertisedDevice.getName().c_str());
-    // mSerial.println("");
+       mSerial.print("Device name: ");
+       mSerial.println(bleAdvertisedDeviceResult.getName().c_str());
+       mSerial.println("");
     }
 
     if (bleAdvertisedDeviceResult.haveServiceUUID())
     {
-    // BLEUUID devUUID = advertisedDevice.getServiceUUID();
+    // BLEUUID devUUID = bleAdvertisedDeviceResult.getServiceUUID();
     // mSerial.print("Found ServiceUUID: ");
     // mSerial.println(devUUID.toString().c_str());
     // mSerial.println("");
@@ -192,25 +197,25 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
 
             if (strManufacturerData.length() == 25 && cManufacturerData[0] == 0x4C && cManufacturerData[1] == 0x00)
             {
-            mSerial.println("Found an iBeacon!");
-            String rssi_s = "??";
-            if(bleAdvertisedDeviceResult.haveRSSI()) {
-                rssi_s = bleAdvertisedDeviceResult.getRSSI();
-            }
-            BLEBeacon oBeacon = BLEBeacon();
-            oBeacon.setData(strManufacturerData);
-            mSerial.printf("iBeacon Frame\n");
-            mSerial.printf("ID: %04X Major: %d Minor: %d UUID: %s Power: %d, RSSI: %s\n", oBeacon.getManufacturerId(), ENDIAN_CHANGE_U16(oBeacon.getMajor()), ENDIAN_CHANGE_U16(oBeacon.getMinor()), oBeacon.getProximityUUID().toString().c_str(), oBeacon.getSignalPower(), rssi_s.c_str());
+                mSerial.println("Found an iBeacon!");
+                String rssi_s = "??";
+                if(bleAdvertisedDeviceResult.haveRSSI()) {
+                    rssi_s = bleAdvertisedDeviceResult.getRSSI();
+                }
+                BLEBeacon oBeacon = BLEBeacon();
+                oBeacon.setData(strManufacturerData);
+                mSerial.printf("iBeacon Frame\n");
+                mSerial.printf("ID: %04X Major: %d Minor: %d UUID: %s Power: %d, RSSI: %s\n", oBeacon.getManufacturerId(), ENDIAN_CHANGE_U16(oBeacon.getMajor()), ENDIAN_CHANGE_U16(oBeacon.getMinor()), oBeacon.getProximityUUID().toString().c_str(), oBeacon.getSignalPower(), rssi_s.c_str());
             }
             else
             { /*
-            mSerial.println("Found another manufacturers beacon!");
-            mSerial.printf("strManufacturerData: %d ", strManufacturerData.length());
-            for (int i = 0; i < strManufacturerData.length(); i++)
-            {
-                mSerial.printf("[%X]", cManufacturerData[i]);
-            }
-            mSerial.printf("\n");
+                mSerial.println("Found another manufacturers beacon!");
+                mSerial.printf("strManufacturerData: %d ", strManufacturerData.length());
+                for (int i = 0; i < strManufacturerData.length(); i++)
+                {
+                    mSerial.printf("[%X]", cManufacturerData[i]);
+                }
+                mSerial.printf("\n");
             */
             }
         }
@@ -233,14 +238,14 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
             std::string bareURL = foundEddyURL.getURL();
             if (bareURL[0] == 0x00)
             {
-            size_t payLoadLen = bleAdvertisedDeviceResult.getPayloadLength();
-            mSerial.println("DATA-->");
-            for (int idx = 0; idx < payLoadLen; idx++)
-            {
-                mSerial.printf("0x%08X ", payLoad[idx]);
-            }
-            mSerial.println("\nInvalid Data");
-            return;
+                size_t payLoadLen = bleAdvertisedDeviceResult.getPayloadLength();
+                mSerial.println("DATA-->");
+                for (int idx = 0; idx < payLoadLen; idx++)
+                {
+                    mSerial.printf("0x%08X ", payLoad[idx]);
+                }
+                mSerial.println("\nInvalid Data");
+                return;
             }
 
             mSerial.printf("Found URL: %s\n", foundEddyURL.getURL().c_str());
@@ -258,7 +263,7 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
 
             for (int idx = 0; idx < 14; idx++)
             {
-            eddyContent[idx] = payLoad[idx + 11];
+                eddyContent[idx] = payLoad[idx + 11];
             }
 
             foundEddyURL.setData(eddyContent);
@@ -421,11 +426,11 @@ void BluetoothScanner::init()
 {
     esp_err_t ret;
 
+// No mem release allows BT and BLE to work side-by-side, but is there enough mem left for the rest...?
     //esp_bt_mem_release(ESP_BT_MODE_BTDM);
-    esp_bt_controller_mem_release(ESP_BT_MODE_BLE);  // --> This fixes MEM Alloc failures in esp_bluedroid_enable!!!
-
+    // esp_bt_controller_mem_release(ESP_BT_MODE_BLE);  // --> This fixes MEM Alloc failures in esp_bluedroid_enable!!!
+#if 1
     // Call bluetooth start from esp32 arduino framework 
-    //btStart();    
     if(!btStarted() && !btStart()){
         log_e("btStart failed");
         return;
@@ -448,6 +453,11 @@ void BluetoothScanner::init()
             
     gap_init();
     startupGap();
+
+#endif
+
+    // Setup static callback wrapper helper function for ble Scan Completed callback function:    
+    Callback<BLE_SCAN_COMPLETE_CALLBACK_SIGNATURE>::func = std::bind(&BluetoothScanner::bleScanCompleted, this, std::placeholders::_1);
 
     BLEDevice::init("");
     pBLEScan = BLEDevice::getScan(); //create new scan
@@ -473,6 +483,16 @@ void BluetoothScanner::setup()
 //  }
 //  buf = osi_calloc(buf_size);
 
+
+    bleScan_shouldStart = true;
+}
+
+// -----------------------------------------------
+void BluetoothScanner::bleScanCompleted(BLEScanResults)
+{
+    mSerial.println(">> bleScanCompleted()");
+    
+    bleScan_shouldStart = true;
 }
 
 // -----------------------------------------------
@@ -486,8 +506,12 @@ void BluetoothScanner::loop()
     }
 
     if(!bleAdvertisedDeviceResultQueue.empty()) {
-        HandleBleAdvertisementResult(bleAdvertisedDeviceResultQueue.front());
-        bleAdvertisedDeviceResultQueue.pop();
+        // mSerial.printf("Found %d ble devices\n", bleAdvertisedDeviceResultQueue.size());
+        for(uint8_t i = 0; i < min(maxBleProcessPerIteration, bleAdvertisedDeviceResultQueue.size()); i++){
+            HandleBleAdvertisementResult(bleAdvertisedDeviceResultQueue.front());
+            bleAdvertisedDeviceResultQueue.pop();
+            vTaskDelay(1);
+        }
     }
 
     unsigned long current_millis = millis();
@@ -538,6 +562,23 @@ void BluetoothScanner::loop()
     if(periodic_scan_interval > 0) {
         if(current_millis > getLastScanTime(ScanType::Either) + periodic_scan_interval*1000) {
             startBluetoothScan(ScanType::Either);
+        }
+    }
+
+    if(bleScan_shouldStart){
+        pBLEScan->stop();
+        //pBLEScan->clearResults(); Taken care of when starting with continue!
+        
+        //if(!pBLEScan->start(100, nullptr, false)) {
+        scanContinueCount = (scanContinueCount+1)%scanContinueWraparound;
+        if(scanContinueCount == 0) {
+            mSerial.println("Starting clean BLE scan");
+        }
+        if(!pBLEScan->start(scanTime, static_cast<scanComplete_cb_t>(Callback<BLE_SCAN_COMPLETE_CALLBACK_SIGNATURE>::callback), scanContinueCount)) {
+            mSerial.println("Problem starting BLE scan!!");
+        }
+        else{
+            bleScan_shouldStart = false;
         }
     }
 }

@@ -88,6 +88,8 @@ public:
     
     // BLE advertisement results:
     void onResult(BLEAdvertisedDevice advertisedDevice);
+    // BLE scan done callback:
+    void bleScanCompleted(BLEScanResults);
     
     void HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdvertisedDeviceResult);
 
@@ -158,9 +160,12 @@ private:
     ScanType scanMode;
 
     
-    int scanTime = 1; //In seconds
+    int scanTime = 4; //1; //In seconds
     BLEScan *pBLEScan = nullptr;
-
+    bool bleScan_shouldStart = false;
+    uint8_t scanContinueCount = 0;
+    const uint8_t scanContinueWraparound = 4;
+    const size_t maxBleProcessPerIteration = 3;
 
     std::queue<esp_bt_gap_cb_param_t::read_rmt_name_param> readRemoteNameResultQueue;
 
