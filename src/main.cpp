@@ -97,6 +97,7 @@ Parameter bluetooth_monitor_retain_flag                (PSTR("bm_retain"),     P
 
 // Known Static Bluetooth MAC 
 // Nested struct helper to generate objects and reduce boilerplate...
+Parameter bluetooth_monitor_devices_header (PSTR("<h3>Bluetooth Monitor Devices</h3>"));
 NestWrapper<BluetoothParameter, MAX_NUM_STORED_BLUETOOTH_DEVICES> bluetooth_monitor_parameter_sets;
 
 // <<<
@@ -307,6 +308,8 @@ void setupMqttCallbacks() {
             alias = alias.substr(first, (last-first+1));
         }
 
+        BLEUUID ble_uuid = BLEUUID::fromString(mac);
+
         // Add to storage and BluetoothScanner
         esp_bd_addr_t addr;
         if(str2bda(mac.c_str(), addr)) {
@@ -324,6 +327,20 @@ void setupMqttCallbacks() {
                 if (device_saved){
                     btScanner.addKnownDevice(addr, alias.c_str());
                 }
+            }
+        }
+        else if (!ble_uuid.equals(BLEUUID())) {
+            bool device_saved = false;
+            for(int i = 0; i < bluetooth_monitor_parameter_sets.size; i++) {
+                if(strlen(bluetooth_monitor_parameter_sets.data[i].getMacAddress()) == 0 || strcmp(bluetooth_monitor_parameter_sets.data[i].getMacAddress(), ble_uuid.toString().c_str()) == 0) {
+                    bluetooth_monitor_parameter_sets.data[i].setMacAddress(ble_uuid.toString().c_str());
+                    bluetooth_monitor_parameter_sets.data[i].setAlias(alias.c_str());
+                    device_saved = true;
+                    break;
+                }
+            }
+            if (device_saved){
+                btScanner.addKnownIBeacon(ble_uuid, alias.c_str());
             }
         }
 
@@ -347,7 +364,7 @@ void setupMqttCallbacks() {
 
 // -----------------------------------------------
 void setupBtScanner() {    
-    btScanner.setMqttTopic(mqtt.trimWildcards(mqtt_topic.getValue()).c_str());
+    btScanner.setMqttTopic(mqtt.trimWildcards(mqtt_topic.getValue()));
     btScanner.setScannerIdentity(mqtt_identity.getValue());
     btScanner.setRetainFlag(param2bool(bluetooth_monitor_retain_flag));        
 
@@ -363,15 +380,26 @@ void setupBtScanner() {
     btScanner.clearKnownDevices();
     for(int i = 0; i < bluetooth_monitor_parameter_sets.size; i++) {
         esp_bd_addr_t mac;
-        // If valid mac address, add it!
         const char* mac_str = bluetooth_monitor_parameter_sets.data[i].getMacAddress();
-        mSerial.printf("Validating MAC: %s \n", mac_str);
-        if(str2bda(mac_str, mac)) {
-            const char* alias = bluetooth_monitor_parameter_sets.data[i].getAlias();
-            mSerial.printf("  Adding device: %s, with MAC: %s \n", alias, mac_str);
-            btScanner.addKnownDevice(mac, alias);
+        if(std::string(mac_str).find_first_not_of(" \t\n\v\f\r") != std::string::npos) {
+            mSerial.printf("Validating MAC: '%s' \n", mac_str);
+
+            BLEUUID ble_uuid = BLEUUID::fromString(mac_str);
+
+            // If valid mac address, add it!
+            if(str2bda(mac_str, mac)) {
+                const char* alias = bluetooth_monitor_parameter_sets.data[i].getAlias();
+                mSerial.printf("  Adding device: %s, with MAC: %s \n", alias, mac_str);
+                btScanner.addKnownDevice(mac, alias);
+            }
+            else if (!ble_uuid.equals(BLEUUID())) {
+                const char* alias = bluetooth_monitor_parameter_sets.data[i].getAlias();
+                mSerial.printf("  Adding device: %s, with UUID: '%s' \n", alias, mac_str);
+                btScanner.addKnownIBeacon(ble_uuid, alias);
+            }
         }
     }
+
 }
 
 // -----------------------------------------------

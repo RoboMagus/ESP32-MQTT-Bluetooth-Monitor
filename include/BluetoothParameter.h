@@ -5,15 +5,14 @@
 #include "parameter.h"
 
 
-static const char MAC_ADDR[] PROGMEM = "MAC address";
+static const char MAC_ADDR[] PROGMEM = "MAC address / iBeacon UUID";
 static const char ALIAS   [] PROGMEM = "Alias";
 
 
 class BluetoothParameter {
 public:
   BluetoothParameter(uint8_t index) :
-    bm_mac_hdr       (PSTR("<h3>Bluetooth Monitor Devices</h3>")),
-    bm_mac_addr      (alias_id+1,   MAC_ADDR,    "",   20),
+    bm_mac_addr      (alias_id+1,   MAC_ADDR,    "",   40),
     bm_mac_alias     (alias_id  ,   ALIAS   ,    "",   20),
     bm_mac_sep       (PSTR("<hr width=\"80%\" align=\"center\" noshade>"))
   {
@@ -41,7 +40,6 @@ public:
 private:
   /*const*/ char alias_id[8];
 
-  Parameter bm_mac_hdr;
   Parameter bm_mac_addr;
   Parameter bm_mac_alias;
   Parameter bm_mac_sep;

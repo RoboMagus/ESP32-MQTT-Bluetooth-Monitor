@@ -7,6 +7,7 @@
 #include <string.h>
 #include <array>
 #include <vector>
+#include <algorithm>    // std::sort
 #include <queue>
 #include <utility>
 #include <mutex>
@@ -68,15 +69,15 @@ public:
 
     void stop();
 
-    void setNumArrivalScans         (uint8_t       val     );
-    void setNumDepartureScans       (uint8_t       val     );
-    void setSecondsBetweenScanIters (unsigned long val     );
-    void setBeaconExpiration        (uint32_t      val     );
-    void setMinTimeBetweenScans     (uint32_t      val     );
-    void setPeriodicScanInterval    (uint32_t      val     );
-    void setMqttTopic               (const char*   topic   );
-    void setScannerIdentity         (const char*   identity);
-    void setRetainFlag              (bool          flag    );
+    void setNumArrivalScans         (uint8_t              val     );
+    void setNumDepartureScans       (uint8_t              val     );
+    void setSecondsBetweenScanIters (unsigned long        val     );
+    void setBeaconExpiration        (uint32_t             val     );
+    void setMinTimeBetweenScans     (uint32_t             val     );
+    void setPeriodicScanInterval    (uint32_t             val     );
+    void setMqttTopic               (const std::string&   topic   );
+    void setScannerIdentity         (const char*          identity);
+    void setRetainFlag              (bool                 flag    );
 
     void startBluetoothScan(ScanType scanType);
 
@@ -86,6 +87,10 @@ public:
     void deleteKnownDevice(const esp_bd_addr_t mac);
     void clearKnownDevices();
     
+    void addKnownIBeacon   (const std::string&  input);
+    void addKnownIBeacon   (const BLEUUID uuid, const char* alias);
+    void deleteKnownIBeacon(const BLEUUID uuid);
+
     // BLE advertisement results:
     void onResult(BLEAdvertisedDevice advertisedDevice);
     // BLE scan done callback:
@@ -123,6 +128,64 @@ private:
             memcpy(mac, MAC, sizeof(esp_bd_addr_t));
         }
     };
+
+    struct iBeaconDeviceId_t {
+        iBeaconDeviceId_t(const BLEUUID uuid, String Name) : uuid(uuid), name(std::move(Name)), power(0), lastSentRssi(0), confidence(0), state(0), last_update_millis(0)
+        {
+
+        }
+
+        bool isVirgin () {
+            return !filled_once;
+        }
+
+        void reset() {
+            power = 0;
+            confidence = 0;
+            state = 0;
+            memset(rssi_array, 0, sizeof(rssi_array));
+            filled_once=false;
+        }
+
+        void addRSSI(int rssi) {
+            if(!filled_once && rssi_idx == 0) {
+                memset(rssi_array, rssi, sizeof(rssi_array)); // Fill all with first value to get immediate 'find'
+            }
+            rssi_array[rssi_idx] = rssi;
+            rssi_idx = (rssi_idx + 1)%rssi_array_size;
+            if (!filled_once && rssi_idx == 0) {
+                filled_once = true;
+            }
+        }
+
+        int getFilteredRSSI() {
+            if(!filled_once) {
+                return 0;
+            }
+            else {
+                int copy[rssi_array_size];
+                std::copy(std::begin(rssi_array), std::end(rssi_array), std::begin(copy));
+                std::sort(copy, copy + rssi_array_size);
+                return copy[2];
+            }
+        }
+
+        BLEUUID uuid;
+        String  name;
+        int     power;
+        int     lastSentRssi;
+
+        uint8_t confidence;
+        uint8_t state;
+
+        unsigned long last_update_millis;
+
+        private:
+            static const int rssi_array_size = 5;
+            int rssi_array[rssi_array_size];
+            int rssi_idx = 0;
+            bool filled_once = false;
+    };
 public:
     const std::vector<btDeviceId_t>& getBtDeviceStates();
 
@@ -154,6 +217,9 @@ private:
     std::vector<btDeviceId_t> btDevices;
     std::mutex btDevicesMutex;
 
+    std::vector<iBeaconDeviceId_t> iBeaconDevices;
+    std::mutex iBeaconDevicesMutex;
+
     volatile uint8_t scanInProgress = 0;
     int scanIndex = -1; // loops over devices
     int iterationScansLeft = -1; // Loops over iterations
@@ -178,7 +244,7 @@ private:
     uint32_t beacon_expiration_seconds;
     uint32_t min_seconds_between_scans;
     uint32_t periodic_scan_interval;
-    const char* m_mqtt_topic;
+    std::string m_mqtt_topic;
     const char* m_scanner_identity;
     bool     m_retain = false;
 

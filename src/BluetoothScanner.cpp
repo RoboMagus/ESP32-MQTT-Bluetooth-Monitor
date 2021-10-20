@@ -59,12 +59,12 @@ extern Timezone mTime;
 // =================================================================================
 
 // -----------------------------------------------
-#define BLUETOOTH_MON_VERSION "0.1.000"
-String createConfidenceMessage(const char* MAC, uint8_t confidence, const char* name, const char* timestamp, bool retain = false, const char* manufacturer = "Unknown") {
-    char buf[320];
+#define BLUETOOTH_MON_VERSION "0.1.001"
+String createConfidenceMessage(const char* MAC, uint8_t confidence, const char* name, const char* timestamp, bool retain = false, const char* iBeaconStr = nullptr, const char* type = "KNOWN_MAC", const char* manufacturer = "Unknown") {
+    char buf[420];
     // Wed Jun 09 2021 20:03:45 GMT+0200 (CEST)
-    snprintf(buf, 320, "{\"id\":\"%s\",\"confidence\":\"%d\",\"name\":\"%s\",\"manufacturer\":\"%s\",\"type\":\"KNOWN_MAC\",\"retained\":\"%s\",\"timestamp\":\"%s\",\"version\":\"%s\"}", 
-        MAC, confidence, name, manufacturer, (retain ? "true" : "false"), timestamp, BLUETOOTH_MON_VERSION);
+    snprintf(buf, 420, "{\"id\":\"%s\",%s%s\"confidence\":\"%d\",\"name\":\"%s\",\"manufacturer\":\"%s\",\"type\":\"%s\",\"retained\":\"%s\",\"timestamp\":\"%s\",\"version\":\"%s\"}", 
+        MAC, (iBeaconStr ? iBeaconStr : " "), (iBeaconStr ? "," : " "), confidence, name, manufacturer, type, (retain ? "true" : "false"), timestamp, BLUETOOTH_MON_VERSION);
     return buf;
 }
 
@@ -205,7 +205,35 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
                 BLEBeacon oBeacon = BLEBeacon();
                 oBeacon.setData(strManufacturerData);
                 mSerial.printf("iBeacon Frame\n");
-                mSerial.printf("ID: %04X Major: %d Minor: %d UUID: %s Power: %d, RSSI: %s\n", oBeacon.getManufacturerId(), ENDIAN_CHANGE_U16(oBeacon.getMajor()), ENDIAN_CHANGE_U16(oBeacon.getMinor()), oBeacon.getProximityUUID().toString().c_str(), oBeacon.getSignalPower(), rssi_s.c_str());
+
+                BLEUUID uuid_swapped(oBeacon.getProximityUUID().getNative()->uuid.uuid128, 16, true);
+                mSerial.printf("ID: %04X Major: %d Minor: %d UUID: %s Power: %d, RSSI: %s\n", oBeacon.getManufacturerId(), ENDIAN_CHANGE_U16(oBeacon.getMajor()), ENDIAN_CHANGE_U16(oBeacon.getMinor()), uuid_swapped.toString().c_str(), oBeacon.getSignalPower(), rssi_s.c_str());
+                
+                std::lock_guard<std::mutex> lock(iBeaconDevicesMutex);
+                for (auto &iBeacon : iBeaconDevices){
+                    if(iBeacon.uuid.equals(uuid_swapped)) {                        
+                        if(bleAdvertisedDeviceResult.haveRSSI()) {
+                            iBeacon.addRSSI(bleAdvertisedDeviceResult.getRSSI());
+                        }
+                        iBeacon.power = oBeacon.getSignalPower();
+                        iBeacon.confidence = 100;
+                        iBeacon.last_update_millis = millis();
+
+                        int filteredRssi = iBeacon.getFilteredRSSI();
+                        if(abs(filteredRssi - iBeacon.lastSentRssi) > 3) {
+                            char rssi_str[25];
+                            snprintf(rssi_str, 24, "\"rssi\":\"%d\"", filteredRssi);
+                            iBeacon.lastSentRssi = filteredRssi;
+                            std::string topic = m_mqtt_topic + "/" + m_scanner_identity + "/" + iBeacon.name.c_str();
+                            mqtt.send_message(topic.c_str(), 
+                                    createConfidenceMessage(iBeacon.uuid.toString().c_str(), iBeacon.confidence, iBeacon.name.c_str(), mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)").c_str(), m_retain, rssi_str, "KNOWN_BEACON" ).c_str(), m_retain
+                                );
+                        }
+                        else {
+                            mSerial.printf("%s rssi: %d, last sent rssi: %d\n", iBeacon.name.c_str(), filteredRssi, iBeacon.lastSentRssi);
+                        }
+                    }
+                }
             }
             else
             { /*
@@ -466,6 +494,8 @@ void BluetoothScanner::init()
     pBLEScan->setInterval(200);
     pBLEScan->setWindow(160); // less or equal setInterval value
     // Scan for 100ms, then not for 25ms
+    
+    bleScan_shouldStart = true;
 }
 
 // -----------------------------------------------
@@ -483,8 +513,6 @@ void BluetoothScanner::setup()
 //  }
 //  buf = osi_calloc(buf_size);
 
-
-    bleScan_shouldStart = true;
 }
 
 // -----------------------------------------------
@@ -538,22 +566,8 @@ void BluetoothScanner::loop()
                 mSerial.println("Stopping All searches...\n\n");
                 scanIndex = -1;
                 scanMode = ScanType::None;
-                
-#if BLE_SCAN_AFTER_READ_REMOTE_NAMES         
-#if 0
-                BLEScanResults foundDevices = pBLEScan->start(scanTime, false); // Blocks until result is given
-                mSerial.print("Devices found: ");
-                mSerial.println(foundDevices.getCount());
-                mSerial.println("Scan done!");
-                pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
-#else
-                pBLEScan->stop();
-                pBLEScan->clearResults();
-                if(!pBLEScan->start(scanTime, nullptr, false)) {
-                    mSerial.println("Problem starting BLE scan!!");
-                }
-#endif   
-#endif
+
+                bleScan_shouldStart = true; 
             }
         }   
     }   
@@ -565,11 +579,11 @@ void BluetoothScanner::loop()
         }
     }
 
-    if(bleScan_shouldStart){
+    // Start new ble scan only if not performing regular scan
+    if(bleScan_shouldStart && scanMode == ScanType::None){
         pBLEScan->stop();
         //pBLEScan->clearResults(); Taken care of when starting with continue!
         
-        //if(!pBLEScan->start(100, nullptr, false)) {
         scanContinueCount = (scanContinueCount+1)%scanContinueWraparound;
         if(scanContinueCount == 0) {
             mSerial.println("Starting clean BLE scan");
@@ -579,6 +593,27 @@ void BluetoothScanner::loop()
         }
         else{
             bleScan_shouldStart = false;
+        }
+    }
+
+    // Check for outdated ble RSSI measurements and send update if needed:
+    const auto _millis = millis();
+    const unsigned long iBeaconTimeout = 30000; // 30s
+    for (auto &iBeacon : iBeaconDevices){
+        if(iBeacon.last_update_millis + iBeaconTimeout < _millis && !iBeacon.isVirgin()) {
+            iBeacon.reset();
+            mSerial.printf("Lost beacon '%s'. Resetting.\n", iBeacon.name.c_str());
+            
+            int filteredRssi = iBeacon.getFilteredRSSI();
+            if(abs(filteredRssi - iBeacon.lastSentRssi) > 3) {
+                char rssi_str[25] = "\"rssi\":\"\"";
+                // snprintf(rssi_str, 24, "\"rssi\":\"\"", filteredRssi);
+                iBeacon.lastSentRssi = filteredRssi;
+                std::string topic = m_mqtt_topic + "/" + m_scanner_identity + "/" + iBeacon.name.c_str();
+                mqtt.send_message(topic.c_str(), 
+                        createConfidenceMessage(iBeacon.uuid.toString().c_str(), iBeacon.confidence, iBeacon.name.c_str(), mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)").c_str(), m_retain, rssi_str, "KNOWN_BEACON").c_str(), m_retain
+                    );
+            }
         }
     }
 }
@@ -680,7 +715,7 @@ void BluetoothScanner::setPeriodicScanInterval(uint32_t val) {
 }
 
 // -----------------------------------------------
-void BluetoothScanner::setMqttTopic(const char* topic){
+void BluetoothScanner::setMqttTopic(const std::string& topic){
     m_mqtt_topic = topic;
 }
 
@@ -707,6 +742,9 @@ void BluetoothScanner::startBluetoothScan(ScanType scanType)
         mSerial.printf("Starting search for devices with scantype %d\n  Set numScans to %d\n", (int)(scanType), numScans);
 
         scanMode = scanType;
+
+        // Stop ble scan when starting regular scan:
+        // pBLEScan->stop();
 
         std::lock_guard<std::mutex> lock(btDevicesMutex);
         // Set counter for all devices:
@@ -756,7 +794,7 @@ bool BluetoothScanner::scanForNextDevice() {
 void BluetoothScanner::addKnownDevice(const std::string& input) {
     std::string _in = input;
     _in.erase(_in.find_last_not_of(" \t\n\v") + 1);
-    std::string mac = _in.substr(0, _in.find(" "));
+    std::string identifier = _in.substr(0, _in.find(" "));
     std::string alias = _in.substr(_in.find(" "));
 
     size_t first = alias.find_first_not_of(" \t\n\v");
@@ -765,10 +803,42 @@ void BluetoothScanner::addKnownDevice(const std::string& input) {
         alias = alias.substr(first, (last-first+1));
     }
 
+    BLEUUID ble_uuid = BLEUUID::fromString(identifier);
+
     esp_bd_addr_t addr;
-    if(str2bda(mac.c_str(), addr)) {
+    if(str2bda(identifier.c_str(), addr)) {
         addKnownDevice(addr, alias.c_str());
     }
+    else if (!ble_uuid.equals(BLEUUID())) {
+        addKnownIBeacon(ble_uuid, alias.c_str());
+    }
+}
+
+// -----------------------------------------------
+void BluetoothScanner::addKnownIBeacon(const BLEUUID uuid, const char* alias) {
+    // Remove entry if it already existed in order to overwrite with updated one:
+    deleteKnownIBeacon(uuid);
+
+    {
+        // Add to the set of currently known iBeacons:
+        std::lock_guard<std::mutex> lock(iBeaconDevicesMutex);
+
+        iBeaconDevices.emplace_back(uuid, String(alias));
+        mSerial.printf("Added iBeacon '%s'\n", alias);
+    }
+}
+
+// -----------------------------------------------
+void BluetoothScanner::deleteKnownIBeacon(const BLEUUID uuid) {
+    std::lock_guard<std::mutex> lock(iBeaconDevicesMutex);
+    for (auto it = iBeaconDevices.begin(); it != iBeaconDevices.end(); /* NOTHING */) {
+        if ((*it).uuid.equals(uuid)) {
+            it = iBeaconDevices.erase(it);
+        }
+        else{
+            ++it;
+        }
+    } 
 }
 
 // -----------------------------------------------
@@ -858,9 +928,9 @@ void BluetoothScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rm
         }
 
         ESP_LOGI(GAP_TAG, "Remote device name: %s", remoteNameParam.rmt_name);
-        std::string topic = std::string(m_mqtt_topic) + "/" + m_scanner_identity + "/" + dev.name.c_str();
+        std::string topic = m_mqtt_topic + "/" + m_scanner_identity + "/" + dev.name.c_str();
         mqtt.send_message(topic.c_str(), 
-                createConfidenceMessage(bda2str(dev.mac, macbuf, 18), dev.confidence, dev.name.c_str(), mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)").c_str()).c_str(), m_retain
+                createConfidenceMessage(bda2str(dev.mac, macbuf, 18), dev.confidence, dev.name.c_str(), mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)").c_str(), m_retain).c_str(), m_retain
             );
     }
     else {
@@ -878,9 +948,9 @@ void BluetoothScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rm
             dev.confidence = 0;
         }
         ESP_LOGI(GAP_TAG, "Remote device name read failed. Status: %d", remoteNameParam.stat);
-        std::string topic = std::string(m_mqtt_topic) + "/" + m_scanner_identity + "/" + dev.name.c_str();
+        std::string topic = m_mqtt_topic + "/" + m_scanner_identity + "/" + dev.name.c_str();
         mqtt.send_message(topic.c_str(), 
-                createConfidenceMessage(bda2str(dev.mac, macbuf, 18), dev.confidence, dev.name.c_str(), mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)").c_str()).c_str()
+                createConfidenceMessage(bda2str(dev.mac, macbuf, 18), dev.confidence, dev.name.c_str(), mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)").c_str(), m_retain).c_str(), m_retain
             );
     }
     // Next scan is triggered from main loop...
