@@ -46,6 +46,10 @@
 
 #include "stackDbgHelper.h"
 
+#ifndef DDUMPTIMEMEMINTERVAL
+#define DDUMPTIMEMEMINTERVAL 10
+#endif
+
 #ifndef MAX_NUM_STORED_BLUETOOTH_DEVICES
 #define MAX_NUM_STORED_BLUETOOTH_DEVICES (8)
 #endif
@@ -492,13 +496,12 @@ void setup() {
     enableLoopWDT();
 }
 
-#if MEM_DEBUG_DUMP_ENABLED
-unsigned long last_millis = 0;
-unsigned long interval=10000; // 10sec
 uint16_t count = 0;
-#endif
 
-// -----------------------------------------------
+unsigned long last_millis = 0;
+// unsigned long interval=10000; // 10sec
+unsigned long interval=DUMPTIMEMEMINTERVAL*1000; // 10sec
+
 void loop() {
     SCOPED_STACK_ENTRY;
 
@@ -511,24 +514,21 @@ void loop() {
     delay(10);
     btScanner.loop();
 
-#if MEM_DEBUG_DUMP_ENABLED
     unsigned long current_millis = millis();
-    if(current_millis > last_millis + interval) {
+    if(interval > 0 && current_millis > last_millis + interval) {
         last_millis = current_millis;
         mSerial.println(current_millis);
         
 	    mSerial.println(mTime.dateTime());
         esp_dump_per_task_heap_info();
-
+        
         count++;
     }    
-#endif
 
     // WDT Feeding is done in Arduino scope outside of the loop...
 	// Delay needed to give idle task some room!!
     delay(10);
 }
-
 #else
 #ERROR wrong SDK configuration!
 #endif 

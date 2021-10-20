@@ -55,6 +55,8 @@ private:
     void setupArduinoOTA();
     void setupConfigPortal();
 
+    void stopArduinoOTA();
+
     // Parameter handling functions
     void loadParams();
     void storeParams();

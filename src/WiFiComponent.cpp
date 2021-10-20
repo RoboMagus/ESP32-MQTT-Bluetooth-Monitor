@@ -221,6 +221,11 @@ void WiFiComponent::setupArduinoOTA() {
 }
 
 // -----------------------------------------------
+void WiFiComponent::stopArduinoOTA() {
+    ArduinoOTA.end();
+}
+
+// -----------------------------------------------
 void WiFiComponent::loadParams() {
     WiFiManagerParameter** params = wm.getParameters();
     uint16_t paramCount = wm.getParametersCount();

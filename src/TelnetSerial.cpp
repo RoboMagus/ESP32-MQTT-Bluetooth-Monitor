@@ -1,5 +1,5 @@
 /*
- TelnetSerial.cpp - esp8266 Serial library for telnet printing
+ TelnetSerial.cpp - Arduino like serial library for printing over Telnet for ESP8266 & ESP32
  */
 
 #include <stdlib.h>

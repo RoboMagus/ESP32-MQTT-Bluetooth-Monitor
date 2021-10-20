@@ -1,5 +1,5 @@
 /*
- TelnetSerial.h - Arduino like serial library for printing over Telnet
+ TelnetSerial.h - Arduino like serial library for printing over Telnet for ESP8266 & ESP32
  */
 
 #ifndef TelnetSerial_h
