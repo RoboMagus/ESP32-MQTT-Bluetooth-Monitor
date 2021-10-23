@@ -7,6 +7,12 @@ __What is it?__
 
 This is a (at the moment __partial__) port of [andrewjfreyer/monitor](https://github.com/andrewjfreyer/monitor) for the popular and super cheap ESP32 boards. For a more detailed explanation of how it works, visit the link above. But as a short summary: this software allows you to scan for known Bluetooth devices by MAC address on demand, by requesting their name. The beauty of it is that you don't need any special software running on the devices you'd like to track!
 
+__iBeacon support:__
+
+Currently, support for ble iBeacon devices is also being implemented! 
+The ESP32 will in the background continually listen passively to broadcasts of iBeacon devices. If a found ble __UUID__ matches one of the configured __UUID__'s then an MQTT message will be broadcast that includes the _RSSI_ of the found service.
+_Note_ that this feature is currently still subject to change!!
+
 
 ## Building the project from source
 ### Prerequisites
@@ -93,6 +99,8 @@ Find some examples for sensors and automations in HomeAssistant [here](doc/HomeA
 - [ ] Add passive scanning as is available in [monitor](https://github.com/andrewjfreyer/monitor)
 - [ ] Expand configuration options
 - [ ] Add BLE iBeacon scanning support for room by room presence detection
+  - [x] Initial support __(This is subject to change!!)__
+- [ ] Add support for interacting with ble keyfinders
 - [ ] Strip away the core BT monitor logic to expose as a library
 - [ ] Make an ESPHome component for it
 	- Currently blocked by incompatible IDF v4.2 support used by ESPHome Core

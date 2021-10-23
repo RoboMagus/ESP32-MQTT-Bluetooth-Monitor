@@ -2,7 +2,7 @@
 I use the ESP32 bluetooth presence scans to provide presence information to HomeAssistant.
 
 Here's an example of a Bluetooth presence sensor for a _ESP32-MQTT-Bluetooth-Monitor_ device with Identity ```ESP32-bluetooth-monitor```.
-The device that the confidence is reported for has alias ```s10```. When the Bluetoot scanner node goes down, this is also reflected in the presence sensor.
+The device that the confidence is reported for has alias ```s10```. When the Bluetooth scanner node goes down, this is also reflected in the presence sensor.
 This snippet belongs in the ```sensor:``` section of the HomeAssistant configuration.
 ```yaml
 - platform: mqtt
@@ -51,5 +51,20 @@ For my household where 4 devices are in the Known Devices list, precense is gene
   mode: parallel
   max: 3
   max_exceeded: silent
+```
+
+I've newly added passive ble iBeacon scan support which will also support rssi value reporting. Below is an example to get to that data using an MQTT sensor in HomeAssistant. This example uses an _ESP32-MQTT-Bluetooth-Monitor_ device with Identity ```ESP32-bluetooth-monitor```.
+The device that the confidence is reported for has alias ```s10-iBeacon```. 
+This snippet belongs in the ```sensor:``` section of the HomeAssistant configuration.
+```yaml
+- platform: mqtt
+  state_topic: 'monitor/ESP32-bluetooth-monitor/s10-iBeacon'
+  value_template: '{{ value_json.rssi }}'
+  unit_of_measurement: 'dBm'
+  availability:
+    - topic: "monitor/ESP32-bluetooth-monitor/status"
+  payload_available: "online"
+  payload_not_available: "offline"
+  name: 'ESP32 S10 iBeacon RSSI'
 ```
 
