@@ -171,7 +171,7 @@ void MQTT::mqtt_callback(char* topic, byte* payload, unsigned int length) {
   mSerial.println();
 
   for (auto& cb : callback_functions) {
-    if(cb.first == topic) {
+    if(cb.first.equalsIgnoreCase(topic)) {
       mSerial.printf("Calling callback for topic '%s'\n", topic);
       cb.second(payload, length);
     }
