@@ -936,7 +936,7 @@ void BluetoothScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rm
     else {
         // Odd formula, but based on original in BluetoothPresence scripts...
         if(scanMode != ScanType::Arrival) {
-            uint8_t confidence =  min(100.0f, float(dev.scansLeft) / (num_departure_scans*90.0f));
+            uint8_t confidence =  min(100.0f, (90.0f * dev.scansLeft) / float(num_departure_scans));
             dev.confidence = min(dev.confidence, confidence); // Dont increase confidence on departure scan.
         }
         else {
