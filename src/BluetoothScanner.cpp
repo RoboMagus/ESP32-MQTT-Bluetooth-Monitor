@@ -40,6 +40,8 @@
 #define SPP_TAG          "SPP"
 #define GATTC_TAG        "GATTC"
 
+#define BTSCAN_TAG       "BTSCAN"
+
 #define BLE_SCAN_AFTER_READ_REMOTE_NAMES (0)
 
 
@@ -172,19 +174,12 @@ void BluetoothScanner::onResult(BLEAdvertisedDevice advertisedDevice) {
 // -----------------------------------------------
 void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdvertisedDeviceResult) {
     SCOPED_STACK_ENTRY;
-    if (bleAdvertisedDeviceResult.haveName())
-    {
-       mSerial.print("Device name: ");
-       mSerial.println(bleAdvertisedDeviceResult.getName().c_str());
-       mSerial.println("");
+    if (bleAdvertisedDeviceResult.haveName()) {
+       ESP_LOGI(BTSCAN_TAG, "Device name: %s", bleAdvertisedDeviceResult.getName().c_str());
     }
 
-    if (bleAdvertisedDeviceResult.haveServiceUUID())
-    {
-    // BLEUUID devUUID = bleAdvertisedDeviceResult.getServiceUUID();
-    // mSerial.print("Found ServiceUUID: ");
-    // mSerial.println(devUUID.toString().c_str());
-    // mSerial.println("");
+    if (bleAdvertisedDeviceResult.haveServiceUUID()) {
+       // ESP_LOGI(BTSCAN_TAG, "Found ServiceUUID: %s", devUUID.toString().c_str());
     }
     else
     {
@@ -197,17 +192,17 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
 
             if (strManufacturerData.length() == 25 && cManufacturerData[0] == 0x4C && cManufacturerData[1] == 0x00)
             {
-                mSerial.println("Found an iBeacon!");
+                ESP_LOGD(BTSCAN_TAG, "Found an iBeacon!");
                 String rssi_s = "??";
                 if(bleAdvertisedDeviceResult.haveRSSI()) {
                     rssi_s = bleAdvertisedDeviceResult.getRSSI();
                 }
                 BLEBeacon oBeacon = BLEBeacon();
                 oBeacon.setData(strManufacturerData);
-                mSerial.printf("iBeacon Frame\n");
+                ESP_LOGD(BTSCAN_TAG, "iBeacon Frame");
 
                 BLEUUID uuid_swapped(oBeacon.getProximityUUID().getNative()->uuid.uuid128, 16, true);
-                mSerial.printf("ID: %04X Major: %d Minor: %d UUID: %s Power: %d, RSSI: %s\n", oBeacon.getManufacturerId(), ENDIAN_CHANGE_U16(oBeacon.getMajor()), ENDIAN_CHANGE_U16(oBeacon.getMinor()), uuid_swapped.toString().c_str(), oBeacon.getSignalPower(), rssi_s.c_str());
+                ESP_LOGD(BTSCAN_TAG, "ID: %04X Major: %d Minor: %d UUID: %s Power: %d, RSSI: %s\n", oBeacon.getManufacturerId(), ENDIAN_CHANGE_U16(oBeacon.getMajor()), ENDIAN_CHANGE_U16(oBeacon.getMinor()), uuid_swapped.toString().c_str(), oBeacon.getSignalPower(), rssi_s.c_str());
                 
                 std::lock_guard<std::mutex> lock(iBeaconDevicesMutex);
                 for (auto &iBeacon : iBeaconDevices){
@@ -230,7 +225,7 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
                                 );
                         }
                         else {
-                            mSerial.printf("%s rssi: %d, last sent rssi: %d\n", iBeacon.name.c_str(), filteredRssi, iBeacon.lastSentRssi);
+                            ESP_LOGI(BTSCAN_TAG, "%s rssi: %d, last sent rssi: %d\n", iBeacon.name.c_str(), filteredRssi, iBeacon.lastSentRssi);
                         }
                     }
                 }
@@ -258,7 +253,7 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
     {
         if (payLoad[11] == 0x10)
         {
-            mSerial.println("Found an EddystoneURL beacon!");
+            ESP_LOGI(BTSCAN_TAG, "Found an EddystoneURL beacon!");
             BLEEddystoneURL foundEddyURL = BLEEddystoneURL();
             std::string eddyContent((char *)&payLoad[11]); // incomplete EddystoneURL struct!
 
@@ -267,23 +262,22 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
             if (bareURL[0] == 0x00)
             {
                 size_t payLoadLen = bleAdvertisedDeviceResult.getPayloadLength();
-                mSerial.println("DATA-->");
-                for (int idx = 0; idx < payLoadLen; idx++)
-                {
-                    mSerial.printf("0x%08X ", payLoad[idx]);
-                }
-                mSerial.println("\nInvalid Data");
+                // mSerial.println("DATA-->");
+                // for (int idx = 0; idx < payLoadLen; idx++)
+                // {
+                //     mSerial.printf("0x%08X ", payLoad[idx]);
+                // }
+                ESP_LOGI(BTSCAN_TAG, "\nInvalid Data");
                 return;
             }
 
-            mSerial.printf("Found URL: %s\n", foundEddyURL.getURL().c_str());
-            mSerial.printf("Decoded URL: %s\n", foundEddyURL.getDecodedURL().c_str());
-            mSerial.printf("TX power %d\n", foundEddyURL.getPower());
-            mSerial.println("\n");
+            ESP_LOGI(BTSCAN_TAG, "Found URL: %s\n", foundEddyURL.getURL().c_str());
+            ESP_LOGI(BTSCAN_TAG, "Decoded URL: %s\n", foundEddyURL.getDecodedURL().c_str());
+            ESP_LOGI(BTSCAN_TAG, "TX power %d\n", foundEddyURL.getPower());
         }
         else if (payLoad[11] == 0x20)
         {
-            mSerial.println("Found an EddystoneTLM beacon!");
+            ESP_LOGI(BTSCAN_TAG, "Found an EddystoneTLM beacon!");
             BLEEddystoneTLM foundEddyURL = BLEEddystoneTLM();
             std::string eddyContent((char *)&payLoad[11]); // incomplete EddystoneURL struct!
 
@@ -295,16 +289,14 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
             }
 
             foundEddyURL.setData(eddyContent);
-            mSerial.printf("Reported battery voltage: %dmV\n", foundEddyURL.getVolt());
-            mSerial.printf("Reported temperature from TLM class: %.2fC\n", (double)foundEddyURL.getTemp());
+            ESP_LOGI(BTSCAN_TAG, "Reported battery voltage: %dmV\n", foundEddyURL.getVolt());
+            ESP_LOGI(BTSCAN_TAG, "Reported temperature from TLM class: %.2fC\n", (double)foundEddyURL.getTemp());
             int temp = (int)payLoad[16] + (int)(payLoad[15] << 8);
             float calcTemp = temp / 256.0f;
-            mSerial.printf("Reported temperature from data: %.2fC\n", calcTemp);
-            mSerial.printf("Reported advertise count: %d\n", foundEddyURL.getCount());
-            mSerial.printf("Reported time since last reboot: %ds\n", foundEddyURL.getTime());
-            mSerial.println("\n");
-            mSerial.print(foundEddyURL.toString().c_str());
-            mSerial.println("\n");
+            ESP_LOGI(BTSCAN_TAG, "Reported temperature from data: %.2fC\n", calcTemp);
+            ESP_LOGI(BTSCAN_TAG, "Reported advertise count: %d\n", foundEddyURL.getCount());
+            ESP_LOGI(BTSCAN_TAG, "Reported time since last reboot: %ds\n", foundEddyURL.getTime());
+            ESP_LOGI(BTSCAN_TAG, "%s", foundEddyURL.toString().c_str());
         }
     }
 }
@@ -518,7 +510,7 @@ void BluetoothScanner::setup()
 // -----------------------------------------------
 void BluetoothScanner::bleScanCompleted(BLEScanResults)
 {
-    mSerial.println(">> bleScanCompleted()");
+    ESP_LOGI(BTSCAN_TAG, ">> bleScanCompleted()");
     
     bleScan_shouldStart = true;
 }
@@ -548,7 +540,7 @@ void BluetoothScanner::loop()
     if(scanMode != ScanType::None) {
         if(current_millis - getLastScanTime(scanMode) > scan_duration_timeout) {
             led.set(OFF);
-            mSerial.println("Scan timed out. Reseting scanning state!\n");
+            ESP_LOGW(BTSCAN_TAG, "Scan timed out. Reseting scanning state!\n");
             scanIndex = -1;
             scanMode = ScanType::None;
         }
@@ -574,7 +566,7 @@ void BluetoothScanner::loop()
                 }
             }
             if (devices_checked >= btDevices.size()) { // All devices scanned. No more scanning
-                mSerial.println("Stopping All searches...\n\n");
+                ESP_LOGI(BTSCAN_TAG, "Stopping All searches...\n\n");
                 scanIndex = -1;
                 scanMode = ScanType::None;
 
@@ -597,10 +589,10 @@ void BluetoothScanner::loop()
         
         scanContinueCount = (scanContinueCount+1)%scanContinueWraparound;
         if(scanContinueCount == 0) {
-            mSerial.println("Starting clean BLE scan");
+            ESP_LOGI(BTSCAN_TAG, "Starting clean BLE scan");
         }
         if(!pBLEScan->start(scanTime, static_cast<scanComplete_cb_t>(Callback<BLE_SCAN_COMPLETE_CALLBACK_SIGNATURE>::callback), scanContinueCount)) {
-            mSerial.println("Problem starting BLE scan!!");
+            ESP_LOGE(BTSCAN_TAG, "Problem starting BLE scan!!");
         }
         else{
             bleScan_shouldStart = false;
@@ -613,7 +605,7 @@ void BluetoothScanner::loop()
     for (auto &iBeacon : iBeaconDevices){
         if(iBeacon.last_update_millis + iBeaconTimeout < _millis && !iBeacon.isVirgin()) {
             iBeacon.reset();
-            mSerial.printf("Lost beacon '%s'. Resetting.\n", iBeacon.name.c_str());
+            ESP_LOGI(BTSCAN_TAG, "Lost beacon '%s'. Resetting.\n", iBeacon.name.c_str());
             
             int filteredRssi = iBeacon.getFilteredRSSI();
             if(abs(filteredRssi - iBeacon.lastSentRssi) > 3) {
@@ -755,7 +747,7 @@ void BluetoothScanner::startBluetoothScan(ScanType scanType)
 
     // Only scan if the last scan was long ago enough...  
     if( _millis > reference_scan_time + min_seconds_between_scans*1000 && scanMode == ScanType::None) {        
-        mSerial.printf("Starting search for devices with scantype %d\n  Set numScans to %d\n", (int)(scanType), numScans);
+        ESP_LOGI(BTSCAN_TAG, "Starting search for devices with scantype %d\n  Set numScans to %d\n", (int)(scanType), numScans);
 
         scanMode = scanType;
 
@@ -786,8 +778,8 @@ void BluetoothScanner::startBluetoothScan(ScanType scanType)
         last_scan_iter_millis = _millis;
     }
     else {
-        mSerial.println("Skipping BT scan. Too soon dude...");
-        mSerial.printf("milllis %lu < %lu, scanIdx: %d\n", _millis, reference_scan_time + min_seconds_between_scans*1000, scanIndex);
+        ESP_LOGI(BTSCAN_TAG, "Skipping BT scan. Too soon dude...");
+        ESP_LOGI(BTSCAN_TAG, "milllis %lu < %lu, scanIdx: %d\n", _millis, reference_scan_time + min_seconds_between_scans*1000, scanIndex);
     }
 }
 
@@ -799,7 +791,7 @@ bool BluetoothScanner::scanForNextDevice() {
             led.set(128);
             scanInProgress = 1;
             esp_bt_gap_read_remote_name(dev.mac);
-            mSerial.printf("Searching device: %s\n", dev.name.c_str());
+            ESP_LOGI(BTSCAN_TAG, "Searching device: %s\n", dev.name.c_str());
             return true;
         }
     }
@@ -840,7 +832,7 @@ void BluetoothScanner::addKnownIBeacon(const BLEUUID uuid, const char* alias) {
         std::lock_guard<std::mutex> lock(iBeaconDevicesMutex);
 
         iBeaconDevices.emplace_back(uuid, String(alias));
-        mSerial.printf("Added iBeacon '%s'\n", alias);
+        ESP_LOGI(BTSCAN_TAG, "Added iBeacon '%s'\n", alias);
     }
 }
 
@@ -925,12 +917,12 @@ void BluetoothScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rm
     std::lock_guard<std::mutex> lock(btDevicesMutex);
     btDeviceId_t& dev = btDevices.at(scanIndex);
 
-    mSerial.printf("ScanResult Callback for dev(%d): %s, scansLeft %d \n", scanIndex, dev.name.c_str(), dev.scansLeft);
+    ESP_LOGI(BTSCAN_TAG, "ScanResult Callback for dev(%d): %s, scansLeft %d \n", scanIndex, dev.name.c_str(), dev.scansLeft);
 
     // Decrement scansLeft for each finished scan:
     if (dev.scansLeft > 0) {
         dev.scansLeft--;
-        mSerial.printf("Decrement scansleft for dev(%d): %s to %d \n", scanIndex, dev.name.c_str(), dev.scansLeft);
+        ESP_LOGI(BTSCAN_TAG, "Decrement scansleft for dev(%d): %s to %d \n", scanIndex, dev.name.c_str(), dev.scansLeft);
     }
 
     // Device found:
@@ -939,11 +931,11 @@ void BluetoothScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rm
         dev.state = 1;
 
         if(scanMode == ScanType::Arrival) {
-            mSerial.printf("Found device, stopping Arrival Scan for %s\n", dev.name.c_str());
+            ESP_LOGI(BTSCAN_TAG, "Found device, stopping Arrival Scan for %s\n", dev.name.c_str());
             dev.scansLeft = 0; // Stop scanning, We've found him!
         }
 
-        ESP_LOGI(GAP_TAG, "Remote device name: %s", remoteNameParam.rmt_name);
+        ESP_LOGI(BTSCAN_TAG, "Remote device name: %s", remoteNameParam.rmt_name);
         std::string topic = m_mqtt_topic + "/" + m_scanner_identity + "/" + dev.name.c_str();
         mqtt.send_message(topic.c_str(), 
                 createConfidenceMessage(bda2str(dev.mac, macbuf, 18), dev.confidence, dev.name.c_str(), mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)").c_str(), m_retain).c_str(), m_retain
