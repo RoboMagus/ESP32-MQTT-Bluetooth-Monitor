@@ -21,8 +21,12 @@
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
 
+#ifndef ESPHOME
 #include <Arduino.h>
 #include <ezTime.h>
+
+extern Timezone mTime;
+#endif
 
 // Tweaked SDK configuration
 #include "sdkconfig.h"
@@ -49,9 +53,6 @@
 #define GAP_CALLBACK_SIGNATURE               void(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
 
 typedef void (*scanComplete_cb_t)(BLEScanResults);
-
-
-extern Timezone mTime;
 
 #define ENDIAN_CHANGE_U16(x) ((((x)&0xFF00) >> 8) + (((x)&0xFF) << 8))
 
@@ -166,6 +167,18 @@ static bool get_name_from_eir(uint8_t *eir, uint8_t *bdname, uint8_t *bdname_len
 }
 
 // -----------------------------------------------
+#ifdef ESPHOME
+std::string getDateTimeString() {
+    static const std::string nyi("Not yet implemented...");
+    return nyi;
+}
+#else
+String getDateTimeString() {
+    return mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)");
+}
+#endif
+
+// -----------------------------------------------
 
 void BluetoothScanner::onResult(BLEAdvertisedDevice advertisedDevice) {
     bleAdvertisedDeviceResultQueue.push(advertisedDevice);
@@ -221,7 +234,7 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
                             iBeacon.lastSentRssi = filteredRssi;
                             std::string topic = m_mqtt_topic + "/" + m_scanner_identity + "/" + iBeacon.name.c_str();
                             mqtt.send_message(topic.c_str(), 
-                                    createConfidenceMessage(iBeacon.uuid.toString().c_str(), iBeacon.confidence, iBeacon.name.c_str(), mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)").c_str(), m_retain, rssi_str, "KNOWN_BEACON" ).c_str(), m_retain
+                                    createConfidenceMessage(iBeacon.uuid.toString().c_str(), iBeacon.confidence, iBeacon.name.c_str(), getDateTimeString().c_str(), m_retain, rssi_str, "KNOWN_BEACON" ).c_str(), m_retain
                                 );
                         }
                         else {
@@ -614,7 +627,7 @@ void BluetoothScanner::loop()
                 iBeacon.lastSentRssi = filteredRssi;
                 std::string topic = m_mqtt_topic + "/" + m_scanner_identity + "/" + iBeacon.name.c_str();
                 mqtt.send_message(topic.c_str(), 
-                        createConfidenceMessage(iBeacon.uuid.toString().c_str(), iBeacon.confidence, iBeacon.name.c_str(), mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)").c_str(), m_retain, rssi_str, "KNOWN_BEACON").c_str(), m_retain
+                        createConfidenceMessage(iBeacon.uuid.toString().c_str(), iBeacon.confidence, iBeacon.name.c_str(), getDateTimeString().c_str(), m_retain, rssi_str, "KNOWN_BEACON").c_str(), m_retain
                     );
             }
         }
@@ -938,7 +951,7 @@ void BluetoothScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rm
         ESP_LOGI(BTSCAN_TAG, "Remote device name: %s", remoteNameParam.rmt_name);
         std::string topic = m_mqtt_topic + "/" + m_scanner_identity + "/" + dev.name.c_str();
         mqtt.send_message(topic.c_str(), 
-                createConfidenceMessage(bda2str(dev.mac, macbuf, 18), dev.confidence, dev.name.c_str(), mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)").c_str(), m_retain).c_str(), m_retain
+                createConfidenceMessage(bda2str(dev.mac, macbuf, 18), dev.confidence, dev.name.c_str(), getDateTimeString().c_str(), m_retain).c_str(), m_retain
             );
     }
     else {
@@ -958,7 +971,7 @@ void BluetoothScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rm
         ESP_LOGI(GAP_TAG, "Remote device name read failed. Status: %d", remoteNameParam.stat);
         std::string topic = m_mqtt_topic + "/" + m_scanner_identity + "/" + dev.name.c_str();
         mqtt.send_message(topic.c_str(), 
-                createConfidenceMessage(bda2str(dev.mac, macbuf, 18), dev.confidence, dev.name.c_str(), mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)").c_str(), m_retain).c_str(), m_retain
+                createConfidenceMessage(bda2str(dev.mac, macbuf, 18), dev.confidence, dev.name.c_str(), getDateTimeString().c_str(), m_retain).c_str(), m_retain
             );
     }
     // Next scan is triggered from main loop...
