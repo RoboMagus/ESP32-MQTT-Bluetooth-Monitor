@@ -483,7 +483,7 @@ void setup() {
         for (auto& dev : devList) {
             String str = FPSTR("<div class='msg {C}'><strong>{n}</strong> is {s}<br/><em><small>{m}</small></em></div>");
             str.replace("{C}", (dev.state == 1 ? "S" : "D"));
-            str.replace("{n}", dev.name);
+            str.replace("{n}", dev.name.c_str());
             str.replace("{s}", (dev.state == 1 ? "Present" : "Away"));
             bda2str(dev.mac, bda_str, 18);
             str.replace("{m}", bda_str);

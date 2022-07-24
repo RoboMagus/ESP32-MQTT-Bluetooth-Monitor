@@ -63,7 +63,7 @@ typedef void (*scanComplete_cb_t)(BLEScanResults);
 
 // -----------------------------------------------
 #define BLUETOOTH_MON_VERSION "0.1.001"
-String createConfidenceMessage(const char* MAC, uint8_t confidence, const char* name, const char* timestamp, bool retain = false, const char* iBeaconStr = nullptr, const char* type = "KNOWN_MAC", const char* manufacturer = "Unknown") {
+std::string createConfidenceMessage(const char* MAC, uint8_t confidence, const char* name, const char* timestamp, bool retain = false, const char* iBeaconStr = nullptr, const char* type = "KNOWN_MAC", const char* manufacturer = "Unknown") {
     char buf[420];
     // Wed Jun 09 2021 20:03:45 GMT+0200 (CEST)
     snprintf(buf, 420, "{\"id\":\"%s\",%s%s\"confidence\":\"%d\",\"name\":\"%s\",\"manufacturer\":\"%s\",\"type\":\"%s\",\"retained\":\"%s\",\"timestamp\":\"%s\",\"version\":\"%s\"}", 
@@ -206,7 +206,7 @@ void BluetoothScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdve
             if (strManufacturerData.length() == 25 && cManufacturerData[0] == 0x4C && cManufacturerData[1] == 0x00)
             {
                 ESP_LOGD(BTSCAN_TAG, "Found an iBeacon!");
-                String rssi_s = "??";
+                std::string rssi_s = "??";
                 if(bleAdvertisedDeviceResult.haveRSSI()) {
                     rssi_s = bleAdvertisedDeviceResult.getRSSI();
                 }
@@ -844,7 +844,7 @@ void BluetoothScanner::addKnownIBeacon(const BLEUUID uuid, const char* alias) {
         // Add to the set of currently known iBeacons:
         std::lock_guard<std::mutex> lock(iBeaconDevicesMutex);
 
-        iBeaconDevices.emplace_back(uuid, String(alias));
+        iBeaconDevices.emplace_back(uuid, alias);
         ESP_LOGI(BTSCAN_TAG, "Added iBeacon '%s'\n", alias);
     }
 }
@@ -870,7 +870,7 @@ void BluetoothScanner::addKnownDevice(const esp_bd_addr_t mac, const char* alias
         std::lock_guard<std::mutex> lock(btDevicesMutex);
         // Remove entry if it already existed in order to overwrite with updated one:
         removeFromBtDevices(mac);
-        btDevices.emplace_back(mac, String(alias));
+        btDevices.emplace_back(mac, alias);
     }
 }
 

@@ -119,19 +119,19 @@ private:
 
     struct btDeviceId_t {
         esp_bd_addr_t mac;
-        String name;
+        std::string   name;
         uint8_t confidence;
         uint8_t state;
         uint8_t scansLeft;
 
-        btDeviceId_t(const esp_bd_addr_t MAC, String Name) : name(std::move(Name)), confidence(0), state(0)
+        btDeviceId_t(const esp_bd_addr_t MAC, std::string Name) : name(std::move(Name)), confidence(0), state(0)
         {
             memcpy(mac, MAC, sizeof(esp_bd_addr_t));
         }
     };
 
     struct iBeaconDeviceId_t {
-        iBeaconDeviceId_t(const BLEUUID uuid, String Name) : uuid(uuid), name(std::move(Name)), power(0), lastSentRssi(0), confidence(0), state(0), last_update_millis(0)
+        iBeaconDeviceId_t(const BLEUUID uuid, std::string Name) : uuid(uuid), name(std::move(Name)), power(0), lastSentRssi(0), confidence(0), state(0), last_update_millis(0)
         {
 
         }
@@ -171,10 +171,10 @@ private:
             }
         }
 
-        BLEUUID uuid;
-        String  name;
-        int     power;
-        int     lastSentRssi;
+        BLEUUID      uuid;
+        std::string  name;
+        int          power;
+        int          lastSentRssi;
 
         uint8_t confidence;
         uint8_t state;
