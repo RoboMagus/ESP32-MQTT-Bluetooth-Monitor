@@ -38,7 +38,7 @@
 #include "NestedStruct.h"
 #include "TelnetSerial.h"
 #include "WiFiComponent.h"
-#include "BluetoothScanner.h"
+#include "BtClassicScanner.h"
 #include "parameter.h"
 #include "BluetoothParameter.h"
 #include "led.h"
@@ -104,7 +104,7 @@ NestWrapper<BluetoothParameter, MAX_NUM_STORED_BLUETOOTH_DEVICES> bluetooth_moni
 
 // <<<
 WiFiComponent wifi(mSerial);
-BluetoothScanner btScanner(mSerial);
+BtClassicScanner btScanner(mSerial);
 MQTT mqtt(mSerial);
 
 Timezone mTime;
@@ -362,7 +362,7 @@ void setupMqttCallbacks() {
                 }
             }
             if (device_saved){
-                btScanner.addKnownIBeacon(ble_uuid, alias.c_str());
+            //  btScanner.addKnownIBeacon(ble_uuid, alias.c_str());
             }
         }
 
@@ -393,7 +393,7 @@ void setupBtScanner() {
     btScanner.setNumArrivalScans        (bluetooth_monitor_arrival_scans.getValue());
     btScanner.setNumDepartureScans      (bluetooth_monitor_departure_scans.getValue());
     btScanner.setSecondsBetweenScanIters(bluetooth_monitor_seconds_between_scan_iters.getValue());
-    btScanner.setBeaconExpiration       (bluetooth_monitor_beacon_expiration.getValue());
+//  btScanner.setBeaconExpiration       (bluetooth_monitor_beacon_expiration.getValue());
     btScanner.setMinTimeBetweenScans    (bluetooth_monitor_min_time_between_scans.getValue());
     btScanner.setPeriodicScanInterval   (bluetooth_monitor_periodic_scan_interval.getValue());
     btScanner.setScanDurationTimeout    (bluetooth_monitor_scan_timeout_seconds.getValue());
@@ -425,7 +425,8 @@ void setupBtScanner() {
             else if (!ble_uuid.equals(BLEUUID())) {
                 const char* alias = bluetooth_monitor_parameter_sets.data[i].getAlias();
                 mSerial.printf("  Adding device: %s, with UUID: '%s' \n", alias, mac_str.c_str());
-                btScanner.addKnownIBeacon(ble_uuid, alias);
+                mSerial.println("LOL JK, functionality temporarily removed!");
+                // btScanner.addKnownIBeacon(ble_uuid, alias);
             }
         }
     }
