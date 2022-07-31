@@ -39,6 +39,7 @@
 #include "TelnetSerial.h"
 #include "WiFiComponent.h"
 #include "BtClassicScanner.h"
+#include "BleScanner.h"
 #include "parameter.h"
 #include "BluetoothParameter.h"
 #include "led.h"
@@ -105,6 +106,7 @@ NestWrapper<BluetoothParameter, MAX_NUM_STORED_BLUETOOTH_DEVICES> bluetooth_moni
 // <<<
 WiFiComponent wifi(mSerial);
 BtClassicScanner btScanner(mSerial);
+BleScanner bleScanner(mSerial);
 MQTT mqtt(mSerial);
 
 Timezone mTime;
