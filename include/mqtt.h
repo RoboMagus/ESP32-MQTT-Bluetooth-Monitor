@@ -12,6 +12,7 @@
 #include <Arduino.h>
 #include <PubSubClient.h>
 #include "WiFiClient.h"
+#include "WiFiManager.h"
 #include "Stream.h"
 
 

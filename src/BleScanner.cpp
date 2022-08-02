@@ -21,20 +21,11 @@
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
 
-#ifndef ESPHOME
-#include <Arduino.h>
-#include <ezTime.h>
-
-extern Timezone mTime;
-#endif
-
 // Tweaked SDK configuration
 #include "sdkconfig.h"
 
 #include "BleScanner.h"
 #include "parameter.h"
-#include "mqtt.h"
-#include "led.h"
 
 #include "stackDbgHelper.h"
 #include "CallbackHelper.h"
@@ -60,30 +51,6 @@ static const unsigned long timeout = 1000*60; // 60sec
 // =================================================================================
 
 // -----------------------------------------------
-#define BLUETOOTH_MON_VERSION "0.1.001"
-extern std::string createConfidenceMessage(const char* MAC, uint8_t confidence, const char* name, const char* timestamp, bool retain = false, const char* iBeaconStr = nullptr, const char* type = "KNOWN_MAC", const char* manufacturer = "Unknown");
-// {
-//     char buf[420];
-//     // Wed Jun 09 2021 20:03:45 GMT+0200 (CEST)
-//     snprintf(buf, 420, "{\"id\":\"%s\",%s%s\"confidence\":\"%d\",\"name\":\"%s\",\"manufacturer\":\"%s\",\"type\":\"%s\",\"retained\":\"%s\",\"timestamp\":\"%s\",\"version\":\"%s\"}", 
-//         MAC, (iBeaconStr ? iBeaconStr : " "), (iBeaconStr ? "," : " "), confidence, name, manufacturer, type, (retain ? "true" : "false"), timestamp, BLUETOOTH_MON_VERSION);
-//     return buf;
-// }
-
-// -----------------------------------------------
-#ifdef ESPHOME
-std::string getDateTimeString() {
-    static const std::string nyi("Not yet implemented...");
-    return nyi;
-}
-#else
-String getDateTimeString() {
-    return mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)");
-}
-#endif
-
-// -----------------------------------------------
-
 void BleScanner::onResult(BLEAdvertisedDevice advertisedDevice) {
     bleAdvertisedDeviceResultQueue.push(advertisedDevice);
 }
@@ -133,13 +100,10 @@ void BleScanner::HandleBleAdvertisementResult(BLEAdvertisedDevice& bleAdvertised
 
                         int filteredRssi = iBeacon.getFilteredRSSI();
                         if(abs(filteredRssi - iBeacon.lastSentRssi) > 3) {
-                            char rssi_str[25];
-                            snprintf(rssi_str, 24, "\"rssi\":\"%d\"", filteredRssi);
+                            if(deviceUpdateCallback) {
+                                deviceUpdateCallback(iBeacon);
+                            }
                             iBeacon.lastSentRssi = filteredRssi;
-                            std::string topic = m_mqtt_topic + "/" + m_scanner_identity + "/" + iBeacon.name.c_str();
-                            mqtt.send_message(topic.c_str(), 
-                                    createConfidenceMessage(iBeacon.uuid.toString().c_str(), iBeacon.confidence, iBeacon.name.c_str(), getDateTimeString().c_str(), m_retain, rssi_str, "KNOWN_BEACON" ).c_str(), m_retain
-                                );
                         }
                         else {
                             ESP_LOGI(BTSCAN_TAG, "%s rssi: %d, last sent rssi: %d\n", iBeacon.name.c_str(), filteredRssi, iBeacon.lastSentRssi);
@@ -296,13 +260,10 @@ void BleScanner::loop()
             
             int filteredRssi = iBeacon.getFilteredRSSI();
             if(abs(filteredRssi - iBeacon.lastSentRssi) > 3) {
-                char rssi_str[25] = "\"rssi\":\"\"";
-                // snprintf(rssi_str, 24, "\"rssi\":\"\"", filteredRssi);
+                if(deviceUpdateCallback) {
+                    deviceUpdateCallback(iBeacon);
+                }
                 iBeacon.lastSentRssi = filteredRssi;
-                std::string topic = m_mqtt_topic + "/" + m_scanner_identity + "/" + iBeacon.name.c_str();
-                mqtt.send_message(topic.c_str(), 
-                        createConfidenceMessage(iBeacon.uuid.toString().c_str(), iBeacon.confidence, iBeacon.name.c_str(), getDateTimeString().c_str(), m_retain, rssi_str, "KNOWN_BEACON").c_str(), m_retain
-                    );
             }
         }
     }
@@ -311,6 +272,11 @@ void BleScanner::loop()
 // -----------------------------------------------
 void BleScanner::stop() {
     
+}
+
+// -----------------------------------------------
+void BleScanner::setDeviceUpdateCallback(DeviceUpdateCallbackFunction_t callback) {
+    deviceUpdateCallback = callback;
 }
 
 // -----------------------------------------------
@@ -330,50 +296,15 @@ void BleScanner::setPeriodicScanInterval(uint32_t val) {
 }
 
 // -----------------------------------------------
-void BleScanner::setMqttTopic(const std::string& topic){
-    m_mqtt_topic = topic;
-}
-
-// -----------------------------------------------
-void BleScanner::setScannerIdentity(const char* identity){
-    m_scanner_identity = identity;
-}
-
-// -----------------------------------------------
-void BleScanner::setRetainFlag(bool flag) {
-    m_retain = flag;
-}
-
-// -----------------------------------------------
 void BleScanner::startBluetoothScan() 
 {
     SCOPED_STACK_ENTRY;
 }
 
 // -----------------------------------------------
-void BleScanner::addKnownDevice(const std::string& input) {
-    std::string _in = input;
-    _in.erase(_in.find_last_not_of(" \t\n\v") + 1);
-    std::string identifier = _in.substr(0, _in.find(" "));
-    std::string alias = _in.substr(_in.find(" "));
-
-    size_t first = alias.find_first_not_of(" \t\n\v");
-    size_t last = alias.find_last_not_of(" \t\n\v");
-    if(first != std::string::npos) {
-        alias = alias.substr(first, (last-first+1));
-    }
-
-    BLEUUID ble_uuid = BLEUUID::fromString(identifier);
-
-    if (!ble_uuid.equals(BLEUUID())) {
-        addKnownIBeacon(ble_uuid, alias.c_str());
-    }
-}
-
-// -----------------------------------------------
-void BleScanner::addKnownIBeacon(const BLEUUID uuid, const char* alias) {
+void BleScanner::addKnownDevice(const BLEUUID uuid, const char* alias) {
     // Remove entry if it already existed in order to overwrite with updated one:
-    deleteKnownIBeacon(uuid);
+    deleteKnownDevice(uuid);
 
     {
         // Add to the set of currently known iBeacons:
@@ -385,7 +316,7 @@ void BleScanner::addKnownIBeacon(const BLEUUID uuid, const char* alias) {
 }
 
 // -----------------------------------------------
-void BleScanner::deleteKnownIBeacon(const BLEUUID uuid) {
+void BleScanner::deleteKnownDevice(const BLEUUID uuid) {
     std::lock_guard<std::mutex> lock(iBeaconDevicesMutex);
     for (auto it = iBeaconDevices.begin(); it != iBeaconDevices.end(); /* NOTHING */) {
         if ((*it).uuid.equals(uuid)) {
@@ -395,4 +326,10 @@ void BleScanner::deleteKnownIBeacon(const BLEUUID uuid) {
             ++it;
         }
     } 
+}
+
+// -----------------------------------------------
+void BleScanner::clearKnownDevices() {
+    std::lock_guard<std::mutex> lock(iBeaconDevicesMutex);
+    iBeaconDevices.clear();
 }

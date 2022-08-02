@@ -38,8 +38,7 @@
 #include "NestedStruct.h"
 #include "TelnetSerial.h"
 #include "WiFiComponent.h"
-#include "BtClassicScanner.h"
-#include "BleScanner.h"
+#include "BtMonitor.h"
 #include "parameter.h"
 #include "BluetoothParameter.h"
 #include "led.h"
@@ -105,8 +104,7 @@ NestWrapper<BluetoothParameter, MAX_NUM_STORED_BLUETOOTH_DEVICES> bluetooth_moni
 
 // <<<
 WiFiComponent wifi(mSerial);
-BtClassicScanner btScanner(mSerial);
-BleScanner bleScanner(mSerial);
+BtMonitor btScanner(mSerial);
 MQTT mqtt(mSerial);
 
 Timezone mTime;
@@ -336,10 +334,10 @@ void setupMqttCallbacks() {
 
         // Add to storage and BluetoothScanner
         esp_bd_addr_t addr;
+        bool device_saved = false;
         if(str2bda(mac.c_str(), addr)) {
             char bda_str[18];
             if (bda2str(addr, bda_str, 18)) {
-                bool device_saved = false;
                 for(int i = 0; i < bluetooth_monitor_parameter_sets.size; i++) {
                     if(strlen(bluetooth_monitor_parameter_sets.data[i].getMacAddress()) == 0 || strcmp(bluetooth_monitor_parameter_sets.data[i].getMacAddress(), bda_str) == 0) {
                         bluetooth_monitor_parameter_sets.data[i].setMacAddress(bda_str);
@@ -348,13 +346,9 @@ void setupMqttCallbacks() {
                         break;
                     }
                 }
-                if (device_saved){
-                    btScanner.addKnownDevice(addr, alias.c_str());
-                }
             }
         }
         else if (!ble_uuid.equals(BLEUUID())) {
-            bool device_saved = false;
             for(int i = 0; i < bluetooth_monitor_parameter_sets.size; i++) {
                 if(strlen(bluetooth_monitor_parameter_sets.data[i].getMacAddress()) == 0 || strcmp(bluetooth_monitor_parameter_sets.data[i].getMacAddress(), ble_uuid.toString().c_str()) == 0) {
                     bluetooth_monitor_parameter_sets.data[i].setMacAddress(ble_uuid.toString().c_str());
@@ -363,18 +357,19 @@ void setupMqttCallbacks() {
                     break;
                 }
             }
-            if (device_saved){
-            //  btScanner.addKnownIBeacon(ble_uuid, alias.c_str());
-            }
+        }
+        if (device_saved){
+            btScanner.addKnownDevice(mac, alias);
         }
 
     });
     mqtt.add_callback((baseTopic + "/setup/DELETE STATIC DEVICE").c_str(), [](const byte* payload, unsigned int length) {
         esp_bd_addr_t addr;
-        if(str2bda(std::string((const char*)payload, length).c_str(), addr)) {
+        std::string identifier((const char*)payload, length);
+        if(str2bda(identifier.c_str(), addr)) {
             char bda_str[18];
             if (bda2str(addr, bda_str, 18)) {
-                btScanner.deleteKnownDevice(addr);
+                btScanner.deleteKnownDevice(identifier);
                 for(int i = 0; i < bluetooth_monitor_parameter_sets.size; i++) {
                     if(strcmp(bluetooth_monitor_parameter_sets.data[i].getMacAddress(), bda_str) == 0) {
                         bluetooth_monitor_parameter_sets.data[i].setMacAddress("");
@@ -422,14 +417,14 @@ void setupBtScanner() {
             if(str2bda(mac_str.c_str(), mac)) {
                 const char* alias = bluetooth_monitor_parameter_sets.data[i].getAlias();
                 mSerial.printf("  Adding device: %s, with MAC: %s \n", alias, mac_str.c_str());
-                btScanner.addKnownDevice(mac, alias);
+                btScanner.addKnownDevice(mac_str, alias);
             }
             else if (!ble_uuid.equals(BLEUUID())) {
                 const char* alias = bluetooth_monitor_parameter_sets.data[i].getAlias();
                 mSerial.printf("  Adding device: %s, with UUID: '%s' \n", alias, mac_str.c_str());
-                mSerial.println("LOL JK, functionality temporarily removed!");
-                // btScanner.addKnownIBeacon(ble_uuid, alias);
+                btScanner.addKnownDevice(mac_str, alias);
             }
+
         }
     }
 

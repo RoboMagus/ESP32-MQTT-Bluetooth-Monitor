@@ -21,24 +21,15 @@
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
 
-#ifndef ESPHOME
-#include <Arduino.h>
-#include <ezTime.h>
-
-extern Timezone mTime;
-#endif
-
 // Tweaked SDK configuration
 #include "sdkconfig.h"
 
 #include "BtClassicScanner.h"
 #include "parameter.h"
-#include "mqtt.h"
 #include "led.h"
 
 #include "stackDbgHelper.h"
 #include "CallbackHelper.h"
-
 
 #define GAP_TAG          "GAP"
 #define SPP_TAG          "SPP"
@@ -56,16 +47,6 @@ extern Timezone mTime;
 // =================================================================================
 //      Free Functions:
 // =================================================================================
-
-// -----------------------------------------------
-#define BLUETOOTH_MON_VERSION "0.1.001"
-std::string createConfidenceMessage(const char* MAC, uint8_t confidence, const char* name, const char* timestamp, bool retain = false, const char* iBeaconStr = nullptr, const char* type = "KNOWN_MAC", const char* manufacturer = "Unknown") {
-    char buf[420];
-    // Wed Jun 09 2021 20:03:45 GMT+0200 (CEST)
-    snprintf(buf, 420, "{\"id\":\"%s\",%s%s\"confidence\":\"%d\",\"name\":\"%s\",\"manufacturer\":\"%s\",\"type\":\"%s\",\"retained\":\"%s\",\"timestamp\":\"%s\",\"version\":\"%s\"}", 
-        MAC, (iBeaconStr ? iBeaconStr : " "), (iBeaconStr ? "," : " "), confidence, name, manufacturer, type, (retain ? "true" : "false"), timestamp, BLUETOOTH_MON_VERSION);
-    return buf;
-}
 
 // -----------------------------------------------
 char *bda2str(const esp_bd_addr_t bda, char *str, size_t size)
@@ -161,18 +142,6 @@ static bool get_name_from_eir(uint8_t *eir, uint8_t *bdname, uint8_t *bdname_len
 
     return false;
 }
-
-// -----------------------------------------------
-#ifdef ESPHOME
-std::string getDateTimeString() {
-    static const std::string nyi("Not yet implemented...");
-    return nyi;
-}
-#else
-String getDateTimeString() {
-    return mTime.dateTime("D M d Y H:i:s ~G~M~TO (T)");
-}
-#endif
 
 // =================================================================================
 // =================================================================================
@@ -488,6 +457,12 @@ void BtClassicScanner::setLastScanTime(ScanType scanType, unsigned long time) {
     }
 }
 
+
+// -----------------------------------------------
+void BtClassicScanner::setDeviceUpdateCallback(DeviceUpdateCallbackFunction_t callback) {
+    deviceUpdateCallback = callback;
+}
+
 // -----------------------------------------------
 void BtClassicScanner::setNumArrivalScans(uint8_t val) {
     num_arrival_scans = val;
@@ -516,21 +491,6 @@ void BtClassicScanner::setPeriodicScanInterval(uint32_t val) {
 // -----------------------------------------------
 void BtClassicScanner::setScanDurationTimeout(uint32_t val) {
     scan_duration_timeout = val*1000;
-}
-
-// -----------------------------------------------
-void BtClassicScanner::setMqttTopic(const std::string& topic){
-    m_mqtt_topic = topic;
-}
-
-// -----------------------------------------------
-void BtClassicScanner::setScannerIdentity(const char* identity){
-    m_scanner_identity = identity;
-}
-
-// -----------------------------------------------
-void BtClassicScanner::setRetainFlag(bool flag) {
-    m_retain = flag;
 }
 
 // -----------------------------------------------
@@ -592,30 +552,6 @@ bool BtClassicScanner::scanForNextDevice() {
 }
 
 // -----------------------------------------------
-void BtClassicScanner::addKnownDevice(const std::string& input) {
-    std::string _in = input;
-    _in.erase(_in.find_last_not_of(" \t\n\v") + 1);
-    std::string identifier = _in.substr(0, _in.find(" "));
-    std::string alias = _in.substr(_in.find(" "));
-
-    size_t first = alias.find_first_not_of(" \t\n\v");
-    size_t last = alias.find_last_not_of(" \t\n\v");
-    if(first != std::string::npos) {
-        alias = alias.substr(first, (last-first+1));
-    }
-
-    BLEUUID ble_uuid = BLEUUID::fromString(identifier);
-
-    esp_bd_addr_t addr;
-    if(str2bda(identifier.c_str(), addr)) {
-        addKnownDevice(addr, alias.c_str());
-    }
-    else if (!ble_uuid.equals(BLEUUID())) {
-        //addKnownIBeacon(ble_uuid, alias.c_str());
-    }
-}
-
-// -----------------------------------------------
 void BtClassicScanner::addKnownDevice(const esp_bd_addr_t mac, const char* alias) {
     char bda_str[18];
     if (bda2str(mac, bda_str, 18)) {
@@ -624,14 +560,6 @@ void BtClassicScanner::addKnownDevice(const esp_bd_addr_t mac, const char* alias
         // Remove entry if it already existed in order to overwrite with updated one:
         removeFromBtDevices(mac);
         btDevices.emplace_back(mac, alias);
-    }
-}
-
-// -----------------------------------------------
-void BtClassicScanner::deleteKnownDevice(const std::string& mac) {
-    esp_bd_addr_t addr;
-    if(str2bda(mac.c_str(), addr)) {
-        deleteKnownDevice(addr);
     }
 }
 
@@ -653,16 +581,14 @@ void BtClassicScanner::deleteKnownDevice(const esp_bd_addr_t mac) {
     removeFromBtDevices(mac);
 }
 
-
 // -----------------------------------------------
 void BtClassicScanner::clearKnownDevices() {
     std::lock_guard<std::mutex> lock(btDevicesMutex);
     btDevices.clear();
 }
 
-
 // -----------------------------------------------
-const std::vector<BtClassicScanner::btDeviceId_t>& BtClassicScanner::getBtDeviceStates() {
+const std::vector<btDeviceId_t>& BtClassicScanner::getBtDeviceStates() {
     std::lock_guard<std::mutex> lock(btDevicesMutex);
     return btDevices;
 }
@@ -675,7 +601,6 @@ void BtClassicScanner::SetReadRemoteNameResult(const esp_bt_gap_cb_param_t::read
 // -----------------------------------------------
 void BtClassicScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rmt_name_param& remoteNameParam) {
     SCOPED_STACK_ENTRY;
-    char macbuf[19];
     led.set(OFF);
     // If more scans are to be done, this causes the main loop to pick it up again!
     scanInProgress = 0; 
@@ -702,10 +627,9 @@ void BtClassicScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rm
         }
 
         ESP_LOGI(BTSCAN_TAG, "Remote device name: %s", remoteNameParam.rmt_name);
-        std::string topic = m_mqtt_topic + "/" + m_scanner_identity + "/" + dev.name.c_str();
-        mqtt.send_message(topic.c_str(), 
-                createConfidenceMessage(bda2str(dev.mac, macbuf, 18), dev.confidence, dev.name.c_str(), getDateTimeString().c_str(), m_retain).c_str(), m_retain
-            );
+        if(deviceUpdateCallback) {
+            deviceUpdateCallback(dev);
+        }
     }
     else {
         // Odd formula, but based on original in BluetoothPresence scripts...
@@ -722,10 +646,9 @@ void BtClassicScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rm
             dev.confidence = 0;
         }
         ESP_LOGI(GAP_TAG, "Remote device name read failed. Status: %d", remoteNameParam.stat);
-        std::string topic = m_mqtt_topic + "/" + m_scanner_identity + "/" + dev.name.c_str();
-        mqtt.send_message(topic.c_str(), 
-                createConfidenceMessage(bda2str(dev.mac, macbuf, 18), dev.confidence, dev.name.c_str(), getDateTimeString().c_str(), m_retain).c_str(), m_retain
-            );
+        if(deviceUpdateCallback) {
+            deviceUpdateCallback(dev);
+        }
     }
     // Next scan is triggered from main loop...
 } 

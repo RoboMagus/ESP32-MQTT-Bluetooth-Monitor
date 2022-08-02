@@ -52,13 +52,25 @@ enum class ScanType{
     Either
 };
 
+struct btDeviceId_t {
+    esp_bd_addr_t mac;
+    std::string   name;
+    uint8_t confidence;
+    uint8_t state;
+    uint8_t scansLeft;
+
+    btDeviceId_t(const esp_bd_addr_t MAC, std::string Name) : name(std::move(Name)), confidence(0), state(0)
+    {
+        memcpy(mac, MAC, sizeof(esp_bd_addr_t));
+    }
+};
+
 class BtClassicScanner
 {
 public:
-    BtClassicScanner(Stream& serialStream) : mSerial(serialStream)  {
-    }
-    virtual ~BtClassicScanner() {
+    typedef std::function<void(const btDeviceId_t&)> DeviceUpdateCallbackFunction_t;
 
+    BtClassicScanner(Stream& serialStream) : mSerial(serialStream)  {
     }
 
     void init();
@@ -69,6 +81,8 @@ public:
 
     void stop();
 
+    void setDeviceUpdateCallback(DeviceUpdateCallbackFunction_t callback);
+
     void setNumArrivalScans         (uint8_t              val     );
     void setNumDepartureScans       (uint8_t              val     );
     void setSecondsBetweenScanIters (unsigned long        val     );
@@ -76,17 +90,12 @@ public:
     void setMinTimeBetweenScans     (uint32_t             val     );
     void setPeriodicScanInterval    (uint32_t             val     );
     void setScanDurationTimeout     (uint32_t             val     );
-    void setMqttTopic               (const std::string&   topic   );
-    void setScannerIdentity         (const char*          identity);
-    void setRetainFlag              (bool                 flag    );
 
     void startBluetoothScan(ScanType scanType);
 
-    void addKnownDevice   (const std::string&  input);
-    void addKnownDevice   (const esp_bd_addr_t mac, const char* alias);
-    void deleteKnownDevice(const std::string&  mac);
-    void deleteKnownDevice(const esp_bd_addr_t mac);
-    void clearKnownDevices();
+    void addKnownDevice    (const esp_bd_addr_t mac, const char* alias);
+    void deleteKnownDevice (const esp_bd_addr_t mac);
+    void clearKnownDevices ();
 
 private:
     void removeFromBtDevices(const esp_bd_addr_t mac);
@@ -106,18 +115,6 @@ private:
 
     void update_device_info(esp_bt_gap_cb_param_t *param);
 
-    struct btDeviceId_t {
-        esp_bd_addr_t mac;
-        std::string   name;
-        uint8_t confidence;
-        uint8_t state;
-        uint8_t scansLeft;
-
-        btDeviceId_t(const esp_bd_addr_t MAC, std::string Name) : name(std::move(Name)), confidence(0), state(0)
-        {
-            memcpy(mac, MAC, sizeof(esp_bd_addr_t));
-        }
-    };
 public:
     const std::vector<btDeviceId_t>& getBtDeviceStates();
 
@@ -161,6 +158,7 @@ private:
     const size_t maxBleProcessPerIteration = 3;
 
     std::queue<esp_bt_gap_cb_param_t::read_rmt_name_param> readRemoteNameResultQueue;
+    DeviceUpdateCallbackFunction_t deviceUpdateCallback;
 
     // Scanner parameters from storage:
     uint8_t num_arrival_scans;
@@ -169,9 +167,6 @@ private:
     uint32_t min_seconds_between_scans;
     uint32_t periodic_scan_interval;
     uint32_t scan_duration_timeout;
-    std::string m_mqtt_topic;
-    const char* m_scanner_identity;
-    bool     m_retain = false;
 
     unsigned long last_arrival_scan_time = 0;
     unsigned long last_departure_scan_time = 0;
