@@ -90,6 +90,7 @@ Parameter bluetooth_monitor_header                     (PSTR("<h3>Bluetooth Moni
 Parameter bluetooth_monitor_arrival_scans              (PSTR("bm_arrival"),    PSTR("# Arrival scans"),               "1",     6);
 Parameter bluetooth_monitor_departure_scans            (PSTR("bm_depart"),     PSTR("# Departure scans"),             "3",     6);
 Parameter bluetooth_monitor_seconds_between_scan_iters (PSTR("bm_iter_time"),  PSTR("Seconds between scan tries"),    "3",     6);
+Parameter bluetooth_monitor_scan_timeout_seconds       (PSTR("bm_timeout"),    PSTR("Scan duration timeout (s)"),     "60",     6);
 Parameter bluetooth_monitor_beacon_expiration          (PSTR("bm_beacon_exp"), PSTR("Beacon expiration time (s)"),    "240",   6);
 Parameter bluetooth_monitor_min_time_between_scans     (PSTR("bm_min_time"),   PSTR("Min. time between scans (s)"),   "10",    6);
 Parameter bluetooth_monitor_periodic_scan_interval     (PSTR("bm_period"),     PSTR("Periodic scan interval (s)<br>(Leave empty to disable periodic scanning)"),    "",      6);
@@ -374,6 +375,7 @@ void setupBtScanner() {
     btScanner.setBeaconExpiration       (strtoul(bluetooth_monitor_beacon_expiration.getValue(), NULL, 0));
     btScanner.setMinTimeBetweenScans    (strtoul(bluetooth_monitor_min_time_between_scans.getValue(), NULL, 0));
     btScanner.setPeriodicScanInterval   (strtoul(bluetooth_monitor_periodic_scan_interval.getValue(), NULL, 0));
+    btScanner.setScanDurationTimeout    (strtoul(bluetooth_monitor_scan_timeout_seconds.getValue(),   NULL, 0));
     // ToDo: Reload the rest of Bluetooth parameters
 
     // (Re)Load known BT devices:

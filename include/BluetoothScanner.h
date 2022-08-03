@@ -75,6 +75,7 @@ public:
     void setBeaconExpiration        (uint32_t             val     );
     void setMinTimeBetweenScans     (uint32_t             val     );
     void setPeriodicScanInterval    (uint32_t             val     );
+    void setScanDurationTimeout     (uint32_t             val     );
     void setMqttTopic               (const std::string&   topic   );
     void setScannerIdentity         (const char*          identity);
     void setRetainFlag              (bool                 flag    );
@@ -244,6 +245,7 @@ private:
     uint32_t beacon_expiration_seconds;
     uint32_t min_seconds_between_scans;
     uint32_t periodic_scan_interval;
+    uint32_t scan_duration_timeout;
     std::string m_mqtt_topic;
     const char* m_scanner_identity;
     bool     m_retain = false;

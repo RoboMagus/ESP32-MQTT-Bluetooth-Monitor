@@ -53,8 +53,6 @@ extern Timezone mTime;
 
 #define ENDIAN_CHANGE_U16(x) ((((x)&0xFF00) >> 8) + (((x)&0xFF) << 8))
 
-static const unsigned long timeout = 1000*60; // 60sec
-
 // =================================================================================
 // =================================================================================
 //      Free Functions:
@@ -548,7 +546,7 @@ void BluetoothScanner::loop()
 
     // If scan is still active but timed out...
     if(scanMode != ScanType::None) {
-        if(current_millis - getLastScanTime(scanMode) > timeout) {
+        if(current_millis - getLastScanTime(scanMode) > scan_duration_timeout) {
             led.set(OFF);
             mSerial.println("Scan timed out. Reseting scanning state!\n");
             scanIndex = -1;
@@ -725,6 +723,11 @@ void BluetoothScanner::setMinTimeBetweenScans(uint32_t val) {
 // -----------------------------------------------
 void BluetoothScanner::setPeriodicScanInterval(uint32_t val) {
     periodic_scan_interval = val;
+}
+
+// -----------------------------------------------
+void BluetoothScanner::setScanDurationTimeout(uint32_t val) {
+    scan_duration_timeout = val*1000;
 }
 
 // -----------------------------------------------
