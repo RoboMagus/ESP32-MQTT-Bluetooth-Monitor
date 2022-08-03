@@ -27,6 +27,8 @@ public:
 
     void handleConnections();
 
+    int getConnectionCount();
+
     int available(void) override;
 
     void flush(void) override;
@@ -168,6 +170,10 @@ public:
         _telnet.handleConnections();
     }
 
+    int getConnectionCount() {
+        return _telnet.getConnectionCount();
+    }
+    
     int available(void)
     {
         int last_return_value = 0;

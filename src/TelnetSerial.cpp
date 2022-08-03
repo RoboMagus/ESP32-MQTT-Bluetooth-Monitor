@@ -55,6 +55,16 @@ void Telnet::handleConnections()
   }
 }
 
+int Telnet::getConnectionCount()
+{
+  int cnt = 0;     
+  for(uint8_t i = 0; i < MAX_TELNET_CLIENTS; i++){
+      if (serverClients[i] && serverClients[i].connected()){
+          cnt++;
+      }
+  }
+  return cnt;
+}
 
 int Telnet::available(void)
 {
