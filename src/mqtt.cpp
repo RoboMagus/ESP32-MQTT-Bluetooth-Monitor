@@ -41,13 +41,15 @@ void MQTT::setup(
       const char* mqtt_server,
       const char* mqtt_port,
       const char* mqtt_username,
-      const char* mqtt_password) 
+      const char* mqtt_password,
+      const char* mqtt_client_id) 
 {
   // Store MQTT server parameters
   _mqtt_server   = mqtt_server;
   _mqtt_port     = mqtt_port;
   _mqtt_username = mqtt_username;
   _mqtt_password = mqtt_password;
+  _mqtt_clientId = mqtt_client_id;
 
   // In case of a re-initialization with new parameters
   if(mqtt_client.connected()) {
@@ -242,7 +244,7 @@ bool MQTT::reconnect()
     _mqtt_reconnect_retries++;
     mSerial.printf("MQTT connection attempt %d ...\n", _mqtt_reconnect_retries);
 
-    if (mqtt_client.connect(_clientId.c_str(), _mqtt_username, _mqtt_password, _mqtt_state_topic_str.c_str(), 1, true, "offline", MQTT_CLEAN_SESSION))
+    if (mqtt_client.connect(_mqtt_clientId, _mqtt_username, _mqtt_password, _mqtt_state_topic_str.c_str(), 1, true, "offline", MQTT_CLEAN_SESSION))
     {
         delay(50);
         mSerial.println(F("MQTT connected!"));
