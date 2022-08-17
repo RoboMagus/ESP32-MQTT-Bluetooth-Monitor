@@ -4,7 +4,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
+#include <string>
 #include <inttypes.h>
 #include "Arduino.h"
 #include "TelnetSerial.h"

@@ -4,7 +4,8 @@
 // Basic headers
 #include <stdio.h>
 #include <stdint.h>
-#include <string.h>
+#include <string>
+#include <cstring>
 #include <array>
 #include <vector>
 #include <algorithm>    // std::sort
@@ -13,30 +14,9 @@
 #include <mutex>
 
 // IDF headers
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <driver/gpio.h>
-#include "nvs.h"
-#include "nvs_flash.h"
-#include "esp_system.h"
-#include "esp_log.h"
-#include "esp32-hal-bt.h"
-#include "esp_bt.h"
-#include "esp_bt_main.h"
-#include "esp_bt_device.h"
-#include "esp_gap_bt_api.h"
+#include <esp_bt_defs.h>
 
-// Tweaked SDK configuration
-#include "sdkconfig.h"
-#include <Arduino.h>
-
-#include <BLEDevice.h>
-#include <BLEUtils.h>
-#include <BLEScan.h>
-#include <BLEAdvertisedDevice.h>
-#include "BLEEddystoneURL.h"
-#include "BLEEddystoneTLM.h"
-#include "BLEBeacon.h"
+#include <esp_gap_bt_api.h>
 
 // monitor/setup/ADD STATIC DEVICE
 // monitor/setup/add known device
@@ -61,7 +41,7 @@ struct btDeviceId_t {
 
     btDeviceId_t(const esp_bd_addr_t MAC, std::string Name) : name(std::move(Name)), confidence(0), state(0)
     {
-        memcpy(mac, MAC, sizeof(esp_bd_addr_t));
+        std::memcpy(mac, MAC, sizeof(esp_bd_addr_t));
     }
 };
 
@@ -70,7 +50,8 @@ class BtClassicScanner
 public:
     typedef std::function<void(const btDeviceId_t&)> DeviceUpdateCallbackFunction_t;
 
-    BtClassicScanner(Stream& serialStream) : mSerial(serialStream)  {
+    BtClassicScanner() {
+        // ToDo: Device list initialization in Constructor!
     }
 
     void init();
@@ -119,9 +100,6 @@ public:
     const std::vector<btDeviceId_t>& getBtDeviceStates();
 
 private:
-
-    Stream& mSerial;
-
     typedef enum {
         APP_GAP_STATE_IDLE = 0,
         APP_GAP_STATE_DEVICE_DISCOVERING,

@@ -4,7 +4,7 @@
 // Basic headers
 #include <stdio.h>
 #include <stdint.h>
-#include <string.h>
+#include <string>
 
 // Tweaked SDK configuration
 #include "sdkconfig.h"

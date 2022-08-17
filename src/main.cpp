@@ -1,7 +1,7 @@
 // Basic headers
 #include <stdio.h>
 #include <stdint.h>
-#include <string.h>
+#include <string>
 #include <vector>
 #include <initializer_list>
 // IDF headers
@@ -119,8 +119,10 @@ uint32_t startFreeHeap = 0;
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_heap_task_info.h"
 
+#ifdef CONFIG_HEAP_TASK_TRACKING
+
+#include "esp_heap_task_info.h"
 #define MAX_TASK_NUM 20                         // Max number of per tasks info that it can store
 #define MAX_BLOCK_NUM 20                        // Max number of per block info that it can store
 
@@ -196,6 +198,7 @@ static void esp_dump_per_task_heap_info(void)
 
     mSerial.printf("\n\n");
 }
+#endif
 
 // -----------------------------------------------
 void heap_caps_alloc_failed_hook(size_t requested_size, uint32_t caps, const char *function_name)
@@ -576,7 +579,9 @@ void loop() {
         mSerial.println(current_millis);
         
 	    mSerial.println(mTime.dateTime());
+#ifdef CONFIG_HEAP_TASK_TRACKING
         esp_dump_per_task_heap_info();
+#endif
         
         count++;
     }    

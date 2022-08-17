@@ -1,7 +1,7 @@
 // Basic headers
 #include <stdio.h>
 #include <stdint.h>
-#include <string.h>
+#include <string>
 #include <array>
 #include <vector>
 #include <utility>

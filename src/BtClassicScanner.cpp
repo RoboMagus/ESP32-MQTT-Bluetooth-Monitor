@@ -1,31 +1,23 @@
 // Basic headers
 #include <stdio.h>
 #include <stdint.h>
-#include <string.h>
+#include <string>
 #include <array>
 #include <vector>
 #include <utility>
 #include <algorithm>
 
 // IDF headers
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <driver/gpio.h>
-#include "nvs.h"
-#include "nvs_flash.h"
-#include "esp_system.h"
-#include "esp_log.h"
-#include "esp32-hal-bt.h"
-#include "esp_bt.h"
-#include "esp_bt_main.h"
-#include "esp_bt_device.h"
-#include "esp_gap_bt_api.h"
+#include <esp32-hal-bt.h>
+#include <esp_bt.h>
+#include <esp_bt_main.h>
+#include <esp_bt_device.h>
+#include <esp_gap_bt_api.h>
 
 // Tweaked SDK configuration
 #include "sdkconfig.h"
 
 #include "BtClassicScanner.h"
-#include "parameter.h"
 #include "led.h"
 
 #include "stackDbgHelper.h"
@@ -61,6 +53,9 @@ char *bda2str(const esp_bd_addr_t bda, char *str, size_t size)
     return str;
 }
 
+#ifndef SCNx8
+#define SCNx8 "hhx"
+#endif
 // -----------------------------------------------
 bool str2bda(const char* str, esp_bd_addr_t& mac) {
     if(strlen(str) < 12 || strlen(str) > 18) {
@@ -402,7 +397,7 @@ uint8_t BtClassicScanner::getNumScans(ScanType scanType) {
     uint8_t numScans = 0;
     switch(scanType) {
         case ScanType::Either:
-            numScans = max(num_arrival_scans, num_departure_scans);
+            numScans = std::max(num_arrival_scans, num_departure_scans);
         break;
 
         case ScanType::Arrival:
@@ -430,7 +425,7 @@ unsigned long BtClassicScanner::getLastScanTime(ScanType scanType) {
             return last_departure_scan_time;
             break;
         case ScanType::Either:
-            return min(last_departure_scan_time, last_arrival_scan_time);
+            return std::min(last_departure_scan_time, last_arrival_scan_time);
             break;
         default:
             return 0;
@@ -634,8 +629,8 @@ void BtClassicScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rm
     else {
         // Odd formula, but based on original in BluetoothPresence scripts...
         if(scanMode != ScanType::Arrival) {
-            uint8_t confidence =  min(100.0f, (90.0f * dev.scansLeft) / float(num_departure_scans));
-            dev.confidence = min(dev.confidence, confidence); // Dont increase confidence on departure scan.
+            uint8_t confidence =  std::min(100.0f, (90.0f * dev.scansLeft) / float(num_departure_scans));
+            dev.confidence = std::min(dev.confidence, confidence); // Dont increase confidence on departure scan.
         }
         else {
             dev.confidence = 0;
