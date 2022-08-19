@@ -12,8 +12,6 @@ class BtMonitor
 {
 public:
     BtMonitor(Stream& serialStream) : m_bleScanner(serialStream) {
-        m_classicScanner.setDeviceUpdateCallback(std::bind(&BtMonitor::onBtClassicDeviceUpdate, this, std::placeholders::_1));
-        m_bleScanner.setDeviceUpdateCallback(std::bind(&BtMonitor::onBleDeviceUpdate, this, std::placeholders::_1));
     }
 
     // Base function wrappers

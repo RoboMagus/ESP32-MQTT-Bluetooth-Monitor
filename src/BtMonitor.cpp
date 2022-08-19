@@ -41,6 +41,9 @@ namespace{
 
 // -----------------------------------------------
 void BtMonitor::init(){
+    m_classicScanner.setDeviceUpdateCallback(std::bind(&BtMonitor::onBtClassicDeviceUpdate, this, std::placeholders::_1));
+    m_bleScanner.setDeviceUpdateCallback(std::bind(&BtMonitor::onBleDeviceUpdate, this, std::placeholders::_1));
+
     m_classicScanner.init();
     m_bleScanner.init();
 }
