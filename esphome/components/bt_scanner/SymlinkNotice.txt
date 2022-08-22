@@ -1,0 +1,5 @@
+Please note that this component contains symlinks to source outside of the esphome directory stucture.
+This should be fine for the Esphome environment itself, but on Windows machines this may not play nicely...
+
+If you run into issues related to source files not being found, clone the repository in an elevated (with administrator rights) command prompt using the following command:
+`git clone -c core.symlinks=true https://github.com/RoboMagus/ESP32-MQTT-Bluetooth-Monitor.git`

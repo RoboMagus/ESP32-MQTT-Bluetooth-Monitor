@@ -51,8 +51,10 @@ public:
     }
 
 private:
-    void onBtClassicDeviceUpdate(const btDeviceId_t&);
-    void onBleDeviceUpdate      (const iBeaconDeviceId_t&);
+    void onBtClassicDeviceScanStart(const btDeviceId_t&);
+    void onBtClassicDeviceUpdate   (const btDeviceId_t&);
+
+    void onBleDeviceUpdate         (const iBeaconDeviceId_t&);
 
 private:
     BtClassicScanner m_classicScanner;

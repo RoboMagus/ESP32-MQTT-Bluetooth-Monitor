@@ -4,6 +4,7 @@
 
 #include "BtMonitor.h"
 #include "mqtt.h"
+#include "led.h"
 
 
 extern Timezone mTime;
@@ -41,6 +42,7 @@ namespace{
 
 // -----------------------------------------------
 void BtMonitor::init(){
+    m_classicScanner.setDeviceScanStartCallback(std::bind(&BtMonitor::onBtClassicDeviceScanStart, this, std::placeholders::_1));
     m_classicScanner.setDeviceUpdateCallback(std::bind(&BtMonitor::onBtClassicDeviceUpdate, this, std::placeholders::_1));
     m_bleScanner.setDeviceUpdateCallback(std::bind(&BtMonitor::onBleDeviceUpdate, this, std::placeholders::_1));
 
@@ -72,12 +74,18 @@ void BtMonitor::startBluetoothScan(ScanType scanType) {
 }
 
 // -----------------------------------------------
+void BtMonitor::onBtClassicDeviceScanStart(const btDeviceId_t& dev) {
+    led.set(128);
+}
+
+// -----------------------------------------------
 void BtMonitor::onBtClassicDeviceUpdate(const btDeviceId_t& dev) {
     char macbuf[19];
     std::string topic = m_mqtt_topic + "/" + m_scanner_identity + "/" + dev.name.c_str();
     mqtt.send_message(topic.c_str(), 
             createConfidenceMessage(bda2str(dev.mac, macbuf, 18), dev.confidence, dev.name.c_str(), getDateTimeString().c_str(), m_retain).c_str(), m_retain
         );
+    led.set(OFF);
 }
 
 // -----------------------------------------------

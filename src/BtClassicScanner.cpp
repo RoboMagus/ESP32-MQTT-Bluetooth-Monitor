@@ -1,11 +1,3 @@
-// Basic headers
-#include <stdio.h>
-#include <stdint.h>
-#include <string>
-#include <array>
-#include <vector>
-#include <utility>
-#include <algorithm>
 
 // IDF headers
 #include <esp32-hal-bt.h>
@@ -14,24 +6,23 @@
 #include <esp_bt_device.h>
 #include <esp_gap_bt_api.h>
 
-// Tweaked SDK configuration
-#include "sdkconfig.h"
-
 #include "BtClassicScanner.h"
-#include "led.h"
-
-#include "stackDbgHelper.h"
 #include "CallbackHelper.h"
 
-#define GAP_TAG          "GAP"
-#define SPP_TAG          "SPP"
-#define GATTC_TAG        "GATTC"
+#ifdef ESPHOME_BT_CLASSIC_SCAN
+#include "esphome/core/log.h"
+using namespace esphome;
+#endif
 
-#define BTSCAN_TAG       "BTSCAN"
+#define GAP_TAG    "GAP"
+#define SPP_TAG    "SPP"
+#define GATTC_TAG  "GATTC"
+
+#define BTSCAN_TAG "BTSCAN"
 
 #define BLE_SCAN_AFTER_READ_REMOTE_NAMES (0)
 
-#define GAP_CALLBACK_SIGNATURE               void(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
+#define GAP_CALLBACK_SIGNATURE void(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
 
 #define ENDIAN_CHANGE_U16(x) ((((x)&0xFF00) >> 8) + (((x)&0xFF) << 8))
 
@@ -333,7 +324,6 @@ void BtClassicScanner::setup()
 // -----------------------------------------------
 void BtClassicScanner::loop()
 {
-    SCOPED_STACK_ENTRY;
     // Handle read remote name result outside of callback if made available:
     if(!readRemoteNameResultQueue.empty()) {
         HandleReadRemoteNameResult(readRemoteNameResultQueue.front());
@@ -345,7 +335,6 @@ void BtClassicScanner::loop()
     // If scan is still active but timed out...
     if(scanMode != ScanType::None) {
         if(current_millis - getLastScanTime(scanMode) > scan_duration_timeout) {
-            led.set(OFF);
             ESP_LOGW(BTSCAN_TAG, "Scan timed out. Reseting scanning state!\n");
             scanIndex = -1;
             scanMode = ScanType::None;
@@ -454,6 +443,11 @@ void BtClassicScanner::setLastScanTime(ScanType scanType, unsigned long time) {
 
 
 // -----------------------------------------------
+void BtClassicScanner::setDeviceScanStartCallback(DeviceUpdateCallbackFunction_t callback) {
+    deviceScanStartCallback = callback;
+}
+
+// -----------------------------------------------
 void BtClassicScanner::setDeviceUpdateCallback(DeviceUpdateCallbackFunction_t callback) {
     deviceUpdateCallback = callback;
 }
@@ -491,7 +485,6 @@ void BtClassicScanner::setScanDurationTimeout(uint32_t val) {
 // -----------------------------------------------
 void BtClassicScanner::startBluetoothScan(ScanType scanType) 
 {
-    SCOPED_STACK_ENTRY;
     uint8_t numScans = getNumScans(scanType);
     unsigned long reference_scan_time = getLastScanTime(scanType);
     unsigned long _millis = millis();
@@ -536,7 +529,9 @@ bool BtClassicScanner::scanForNextDevice() {
     if(btDevices.size()) {
         auto& dev = btDevices.at(scanIndex);
         if(dev.scansLeft > 0) {
-            led.set(128);
+            if(deviceScanStartCallback) {
+                deviceScanStartCallback(dev);
+            }
             scanInProgress = 1;
             esp_bt_gap_read_remote_name(dev.mac);
             ESP_LOGI(BTSCAN_TAG, "Searching device: %s\n", dev.name.c_str());
@@ -595,8 +590,6 @@ void BtClassicScanner::SetReadRemoteNameResult(const esp_bt_gap_cb_param_t::read
 
 // -----------------------------------------------
 void BtClassicScanner::HandleReadRemoteNameResult(esp_bt_gap_cb_param_t::read_rmt_name_param& remoteNameParam) {
-    SCOPED_STACK_ENTRY;
-    led.set(OFF);
     // If more scans are to be done, this causes the main loop to pick it up again!
     scanInProgress = 0; 
 

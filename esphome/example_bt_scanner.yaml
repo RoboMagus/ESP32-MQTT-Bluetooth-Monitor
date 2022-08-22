@@ -1,0 +1,42 @@
+substitutions:
+  friendly_name: "ESP32-BT-Monitor"
+  
+esphome:
+  name: "${friendly_name}"
+
+esp32:
+  board: wemos_d1_mini32
+  framework:
+    # Note: Currently **REQUIRES** 5.0.0 & 2.0.3 versions!
+    type: arduino
+    version: 2.0.3
+    platform_version: 5.0.0
+
+# Note: Branch will change after changes merge with Master branch.
+external_components:
+  - source: github://RoboMagus/ESP32-MQTT-Bluetooth-Monitor@esphome-dev
+
+wifi:
+  ssid: !secret WiFi_ssid
+  password: !secret WiFi_password
+
+mdns:
+  disabled: false
+  
+# Enable Home Assistant API
+api:
+  password: !secret hass_api_password
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  password: !secret ota_password
+  
+# Enable logging
+logger:
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+    
+bt_scanner:

@@ -15,7 +15,6 @@
 
 // IDF headers
 #include <esp_bt_defs.h>
-
 #include <esp_gap_bt_api.h>
 
 // monitor/setup/ADD STATIC DEVICE
@@ -62,6 +61,7 @@ public:
 
     void stop();
 
+    void setDeviceScanStartCallback(DeviceUpdateCallbackFunction_t callback);
     void setDeviceUpdateCallback(DeviceUpdateCallbackFunction_t callback);
 
     void setNumArrivalScans         (uint8_t              val     );
@@ -136,6 +136,7 @@ private:
     const size_t maxBleProcessPerIteration = 3;
 
     std::queue<esp_bt_gap_cb_param_t::read_rmt_name_param> readRemoteNameResultQueue;
+    DeviceUpdateCallbackFunction_t deviceScanStartCallback;
     DeviceUpdateCallbackFunction_t deviceUpdateCallback;
 
     // Scanner parameters from storage:
