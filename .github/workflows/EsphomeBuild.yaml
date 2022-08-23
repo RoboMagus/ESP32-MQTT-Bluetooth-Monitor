@@ -1,0 +1,30 @@
+name: Build EspHome
+
+on: 
+  push:
+    branches:
+      - '**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: esphome/esphome:latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: btScannerProject
+
+      - name: Write secrets file
+        uses: "DamianReeves/write-file-action@v1.1"
+        with:
+          path: btScannerProject/esphome/secrets.yaml
+          write-mode: overwrite
+          contents: |
+            WiFi_ssid: wifi-ssid
+            WiFi_password: wifi-pass
+            hass_api_password: hass-api-password
+            api_encryption_key: jf0RvxuceKtAA7PW+6B8exo7z47ZHagtlAWGrWXpCME=
+            ota_password: ota-password
+
+      - run: esphome compile btScannerProject/esphome/example_bt_scanner.yaml

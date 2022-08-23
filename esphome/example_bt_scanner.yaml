@@ -2,7 +2,7 @@ substitutions:
   friendly_name: "ESP32-BT-Monitor"
   
 esphome:
-  name: "${friendly_name}"
+  name: esp32-bt-monitor
 
 esp32:
   board: wemos_d1_mini32
