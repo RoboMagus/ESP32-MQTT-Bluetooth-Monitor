@@ -1,6 +1,9 @@
 
+![PlatformIO Build Status](https://img.shields.io/github/workflow/status/RoboMagus/ESP32-MQTT-Bluetooth-Monitor/Build%20PlatformIO%20Project?label=Platformio%20build&logo=github&style=for-the-badge) 
+![EspHome Build Status](https://img.shields.io/github/workflow/status/RoboMagus/ESP32-MQTT-Bluetooth-Monitor/Build%20EspHome?label=EspHome%20build&logo=github&style=for-the-badge)
+
 # ESP32 BT Monitor
-![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/RoboMagus/ESP32-MQTT-Bluetooth-Monitor?include_prereleases&style=for-the-badge) ![ESP-IDF](https://img.shields.io/badge/ESP--IDF-v4.2.0-red?longCache=true&style=for-the-badge)
+![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/RoboMagus/ESP32-MQTT-Bluetooth-Monitor?include_prereleases&style=for-the-badge) ![ESP-IDF](https://img.shields.io/badge/ESP--IDF-v4.4.3-red?longCache=true&style=for-the-badge)
 ![ESP32](https://img.shields.io/badge/ESP-32-blue?longCache=true&style=for-the-badge)
 
 __What is it?__
@@ -103,5 +106,5 @@ Find some examples for sensors and automations in HomeAssistant [here](doc/HomeA
 - [ ] Add support for interacting with ble keyfinders
 - [ ] Strip away the core BT monitor logic to expose as a library
 - [ ] Make an ESPHome component for it
-	- Currently blocked by incompatible IDF v4.2 support used by ESPHome Core
+	- **Work In Progress**
  
